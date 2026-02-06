@@ -75,7 +75,7 @@ class ProjectViewModel : ViewModel() {
                  if (openResult.isSuccess) {
                      // Run Analysis
                      if (analysisCmd.isNotBlank() && analysisCmd != "none") {
-                         R2PipeManager.execute(analysisCmd)
+                         R2PipeManager.execute("$analysisCmd; iIj")
                      }
                      // Load Data (Overview only)
                      loadOverview()

@@ -61,7 +61,7 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignore
+                    LogManager.log(LogType.ERROR, "Failed to read R2 stderr: ${e.message}")
                 }
             }.start()
 
@@ -136,15 +136,15 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
         }
 
         val result = try {
-            // 1. 关键修复：发送命令前，先清理掉管道里残留的垃圾数据
+            // 发送命令前，先清理掉管道里残留的垃圾数据
             flushInputStream()
 
-            // 2. 发送命令
+            // 发送命令
             writer?.write(command)
             writer?.newLine()
             writer?.flush()
 
-            // 3. 读取结果
+            // 读取结果
             readResult()
         } catch (e: Exception) {
             isRunning = false
@@ -162,26 +162,44 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
 
     private fun readResult(): String {
         val baos = ByteArrayOutputStream()
+        val buffer = ByteArray(4096) // 4KB Buffer，类似 Python 的 chunks
 
         while (true) {
-            // 阻塞读取
-            val byte = inputStream?.read() ?: -1
-
-            if (byte == -1) {
+            val bytesRead = inputStream?.read(buffer) ?: -1
+            if (bytesRead == -1) {
                 isRunning = false
                 if (baos.size() > 0) return baos.toString("UTF-8")
                 throw RuntimeException("R2 process terminated unexpectedly (EOF)")
             }
 
-            // 遇到 r2pipe 协议结束符 (NULL byte)
-            if (byte == 0) {
-                break
+            // 查找 buffer 中是否有 0 (NULL)
+            var nullIndex = -1
+            for (i in 0 until bytesRead) {
+                if (buffer[i] == 0.toByte()) {
+                    nullIndex = i
+                    break
+                }
             }
 
-            baos.write(byte)
+            if (nullIndex != -1) {
+                // 找到了结束符，只写入结束符之前的数据
+                baos.write(buffer, 0, nullIndex)
+                // 注意：如果有后续逻辑需要处理粘包（即 0 后面还有数据），
+                // 这里需要像 Python 那样把剩下的存起来。
+                // 但对于标准的请求-响应模型，通常扔掉或留给 flush 也可以。
+                break
+            } else {
+                // 没找到结束符，写入全部读取的数据，继续读
+                baos.write(buffer, 0, bytesRead)
+            }
         }
 
-        return baos.toString("UTF-8").trim()
+        // 建议模仿 Python 加上 ignore，防止二进制数据导致 crash
+        return try {
+            baos.toString("UTF-8").trim()
+        } catch (e: Exception) {
+            baos.toString() // Fallback
+        }
     }
 
     fun cmdj(command: String): String {
