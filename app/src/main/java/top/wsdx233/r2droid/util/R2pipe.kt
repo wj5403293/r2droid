@@ -52,9 +52,13 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
             Thread {
                 try {
                     val reader = process!!.errorStream.bufferedReader()
-                    while (reader.readLine() != null) {
-                        // 丢弃或记录日志
-                        // Log.d("R2Pipe", line)
+                    var line: String?
+                    while (reader.readLine().also { line = it } != null) {
+                        // 记录日志
+                        line?.let {
+                            LogManager.log(LogType.WARNING, it)
+                            Log.d("R2Pipe", it)
+                        }
                     }
                 } catch (e: Exception) {
                     // Ignore
@@ -67,6 +71,7 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
             isRunning = true
 
         } catch (e: Exception) {
+            LogManager.log(LogType.ERROR, "Failed to start R2 process: ${e.message}")
             throw RuntimeException("Failed to start R2 process: ${e.message}", e)
         }
     }
@@ -122,9 +127,12 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
     fun cmd(command: String): String {
 
         Log.i("R2Pipe", "cmd:$command")
+        LogManager.log(LogType.COMMAND, command)
 
         if (!isRunning || process == null) {
-            throw IllegalStateException("R2 process is not running")
+            val msg = "R2 process is not running"
+            LogManager.log(LogType.ERROR, msg)
+            throw IllegalStateException(msg)
         }
 
         val result = try {
@@ -140,10 +148,14 @@ class R2pipe(context: Context, private val filePath: String? = null, private val
             readResult()
         } catch (e: Exception) {
             isRunning = false
+            LogManager.log(LogType.ERROR, "Cmd execution failed: ${e.message}")
             throw RuntimeException("Cmd execution failed: ${e.message}", e)
         }
 
         Log.i("R2Pipe", "result:$result")
+        if (result.isNotBlank()) {
+            LogManager.log(LogType.OUTPUT, result)
+        }
 
         return result
     }

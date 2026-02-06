@@ -14,15 +14,16 @@ import top.wsdx233.r2droid.util.R2PipeManager
 sealed class ProjectUiState {
     object Idle : ProjectUiState()
     data class Configuring(val filePath: String) : ProjectUiState()
+    object Analyzing : ProjectUiState()
     object Loading : ProjectUiState()
     data class Success(
         val binInfo: BinInfo? = null,
-        val sections: List<Section> = emptyList(),
-        val symbols: List<Symbol> = emptyList(),
-        val imports: List<ImportInfo> = emptyList(),
-        val relocations: List<Relocation> = emptyList(),
-        val strings: List<StringInfo> = emptyList(),
-        val functions: List<FunctionInfo> = emptyList()
+        val sections: List<Section>? = null,
+        val symbols: List<Symbol>? = null,
+        val imports: List<ImportInfo>? = null,
+        val relocations: List<Relocation>? = null,
+        val strings: List<StringInfo>? = null,
+        val functions: List<FunctionInfo>? = null
     ) : ProjectUiState()
     data class Error(val message: String) : ProjectUiState()
 }
@@ -32,6 +33,9 @@ class ProjectViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProjectUiState>(ProjectUiState.Idle)
     val uiState: StateFlow<ProjectUiState> = _uiState.asStateFlow()
+
+    // Expose logs from LogManager
+    val logs: StateFlow<List<top.wsdx233.r2droid.util.LogEntry>> = top.wsdx233.r2droid.util.LogManager.logs
 
     init {
         // Init logic moved to initialize() to support ViewModel reuse
@@ -49,7 +53,7 @@ class ProjectViewModel : ViewModel() {
              // If we are Idle/Error, try to recover session if connected.
              if (_uiState.value is ProjectUiState.Idle || _uiState.value is ProjectUiState.Error) {
                  if (R2PipeManager.isConnected) {
-                    loadAllData()
+                    loadOverview()
                 } else {
                      _uiState.value = ProjectUiState.Error("No file selected or session active")
                 }
@@ -61,7 +65,7 @@ class ProjectViewModel : ViewModel() {
          val currentState = _uiState.value
          if (currentState is ProjectUiState.Configuring) {
              viewModelScope.launch {
-                 _uiState.value = ProjectUiState.Loading
+                 _uiState.value = ProjectUiState.Analyzing
                  
                  val flags = if (writable) "-w $startupFlags" else startupFlags
                  
@@ -73,8 +77,8 @@ class ProjectViewModel : ViewModel() {
                      if (analysisCmd.isNotBlank() && analysisCmd != "none") {
                          R2PipeManager.execute(analysisCmd)
                      }
-                     // Load Data
-                     loadAllData()
+                     // Load Data (Overview only)
+                     loadOverview()
                      
                      // Clear pending path so subsequent navigations (or rotations) rely on configured state
                      R2PipeManager.pendingFilePath = null
@@ -85,9 +89,14 @@ class ProjectViewModel : ViewModel() {
          }
     }
 
-    fun loadAllData() {
+    private fun loadOverview() {
         viewModelScope.launch {
-            // _uiState.value = ProjectUiState.Loading // Don't reset if already loading
+            // If completely new, show loading
+            if (_uiState.value !is ProjectUiState.Success) {
+                // We don't want to override Analyzing too early if we want to show it, 
+                // but loadOverview is called AFTER analysis.
+                // However, getting overview is fast.
+            }
             
             val binInfoResult = repository.getOverview()
             if (binInfoResult.isFailure) {
@@ -95,23 +104,98 @@ class ProjectViewModel : ViewModel() {
                 return@launch
             }
             
-            val sectionsResult = repository.getSections()
-            val symbolsResult = repository.getSymbols()
-            val importsResult = repository.getImports()
-            val relocationsResult = repository.getRelocations()
-            val stringsResult = repository.getStrings()
-            val functionsResult = repository.getFunctions()
-            
             _uiState.value = ProjectUiState.Success(
-                binInfo = binInfoResult.getOrNull(),
-                sections = sectionsResult.getOrDefault(emptyList()),
-                symbols = symbolsResult.getOrDefault(emptyList()),
-                imports = importsResult.getOrDefault(emptyList()),
-                relocations = relocationsResult.getOrDefault(emptyList()),
-                strings = stringsResult.getOrDefault(emptyList()),
-                functions = functionsResult.getOrDefault(emptyList())
+                binInfo = binInfoResult.getOrNull()
             )
         }
+    }
+
+    fun loadSections() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.sections != null) return
+        
+        viewModelScope.launch {
+            val result = repository.getSections()
+            // Ensure we are still in success state
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(sections = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadSymbols() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.symbols != null) return
+
+        viewModelScope.launch {
+            val result = repository.getSymbols()
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(symbols = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadImports() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.imports != null) return
+
+        viewModelScope.launch {
+            val result = repository.getImports()
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(imports = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadRelocations() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.relocations != null) return
+
+        viewModelScope.launch {
+            val result = repository.getRelocations()
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(relocations = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadStrings() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.strings != null) return
+
+        viewModelScope.launch {
+            val result = repository.getStrings()
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(strings = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadFunctions() {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+        if (current.functions != null) return
+
+        viewModelScope.launch {
+            val result = repository.getFunctions()
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(functions = result.getOrDefault(emptyList()))
+            }
+        }
+    }
+
+    fun loadAllData() {
+        // Deprecated or fallback to loading overview
+        loadOverview()
+    }
+
+    fun retryLoadAll() {
+        loadOverview()
     }
 
     override fun onCleared() {

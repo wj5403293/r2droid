@@ -14,6 +14,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,6 +64,7 @@ fun ProjectScreen(
     viewModel: ProjectViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val logs by viewModel.logs.collectAsState()
     val context = LocalContext.current
     
     // Check intent on entry (handle new file selection)
@@ -77,8 +84,14 @@ fun ProjectScreen(
         return
     }
 
+    // Analyzing state check
+    if (uiState is ProjectUiState.Analyzing) {
+        AnalysisProgressScreen(logs = logs)
+        return
+    }
+
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions")
+    val tabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions", "Logs")
 
     Scaffold(
         topBar = {
@@ -147,20 +160,33 @@ fun ProjectScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadAllData() }) {
+                        Button(onClick = { viewModel.retryLoadAll() }) {
                             Text("Retry")
                         }
                     }
                 }
                 is ProjectUiState.Success -> {
+                    // Trigger data load when tab selected
+                    androidx.compose.runtime.LaunchedEffect(selectedTabIndex) {
+                        when (selectedTabIndex) {
+                            1 -> viewModel.loadSections()
+                            2 -> viewModel.loadSymbols()
+                            3 -> viewModel.loadImports()
+                            4 -> viewModel.loadRelocations()
+                            5 -> viewModel.loadStrings()
+                            6 -> viewModel.loadFunctions()
+                        }
+                    }
+
                     when (selectedTabIndex) {
                         0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
-                        1 -> SectionList(state.sections)
-                        2 -> SymbolList(state.symbols)
-                        3 -> ImportList(state.imports)
-                        4 -> RelocationList(state.relocations)
-                        5 -> StringList(state.strings)
-                        6 -> FunctionList(state.functions)
+                        1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections)
+                        2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols)
+                        3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports)
+                        4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations)
+                        5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings)
+                        6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions)
+                        7 -> LogList(logs)
                     }
                 }
                 else -> {} // Configuring handled above
@@ -273,4 +299,62 @@ fun AnalysisConfigScreen(
             }
         }
     }
+}
+
+@Composable
+fun LogList(logs: List<top.wsdx233.r2droid.util.LogEntry>) {
+    val listState = rememberLazyListState()
+
+    // Auto scroll to bottom
+    androidx.compose.runtime.LaunchedEffect(logs.size) {
+        if (logs.isNotEmpty()) {
+            listState.animateScrollToItem(logs.size - 1)
+        }
+    }
+
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = androidx.compose.ui.graphics.Color(0xFF1E1E1E) // Dark background for logs
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            items(logs) { entry ->
+                LogItem(entry)
+            }
+        }
+    }
+}
+
+@Composable
+fun LogItem(entry: top.wsdx233.r2droid.util.LogEntry) {
+    val color = when (entry.type) {
+        top.wsdx233.r2droid.util.LogType.COMMAND -> MaterialTheme.colorScheme.primary
+        top.wsdx233.r2droid.util.LogType.OUTPUT -> androidx.compose.ui.graphics.Color(0xFFE0E0E0)
+        top.wsdx233.r2droid.util.LogType.INFO -> androidx.compose.ui.graphics.Color.Gray
+        top.wsdx233.r2droid.util.LogType.WARNING -> androidx.compose.ui.graphics.Color(0xFFFFA000) // Amber
+        top.wsdx233.r2droid.util.LogType.ERROR -> MaterialTheme.colorScheme.error
+    }
+
+    val prefix = when (entry.type) {
+        top.wsdx233.r2droid.util.LogType.COMMAND -> "$ "
+        top.wsdx233.r2droid.util.LogType.WARNING -> "[WARN] "
+        top.wsdx233.r2droid.util.LogType.ERROR -> "[ERR] "
+        else -> ""
+    }
+
+    Text(
+        text = run {
+            val content = "$prefix${entry.message}"
+            if (content.length > 2000) {
+                 content.take(2000) + "... (truncated ${content.length - 2000} chars)"
+            } else {
+                 content
+            }
+        },
+        color = color,
+        style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+    )
 }
