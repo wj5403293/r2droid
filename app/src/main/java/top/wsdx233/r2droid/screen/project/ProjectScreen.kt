@@ -1,7 +1,4 @@
-
-
 package top.wsdx233.r2droid.screen.project
-
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,12 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,16 +31,22 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -54,9 +57,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.termux.view.R
+import top.wsdx233.r2droid.util.R2PipeManager
+
+enum class MainCategory(val title: String, val icon: ImageVector) {
+    List("列表", Icons.Filled.List),
+    Detail("详情", Icons.Filled.Info),
+    Project("项目", Icons.Filled.Build)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,45 +104,130 @@ fun ProjectScreen(
         return
     }
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions", "Logs")
+    // State for navigation
+    var selectedCategory by remember { mutableStateOf(MainCategory.List) }
+    var selectedListTabIndex by remember { mutableIntStateOf(0) }
+    var selectedDetailTabIndex by remember { mutableIntStateOf(0) }
+    var selectedProjectTabIndex by remember { mutableIntStateOf(2) } // Default to Logs (index 2)
+    var showJumpDialog by remember { mutableStateOf(false) }
+
+    val listTabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions")
+    val detailTabs = listOf("Hex", "Disassembly", "Decompile")
+    val projectTabs = listOf("Settings", "Terminal", "Logs")
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Project Analysis") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            TopAppBar(
+                title = {
+                            Text(stringResource(top.wsdx233.r2droid.R.string.app_name))
+
+                        },
+                actions = {
+                    if (selectedCategory == MainCategory.Detail) {
+                         androidx.compose.material3.IconButton(onClick = { showJumpDialog = true }) {
+                             Icon(Icons.Filled.PlayArrow, contentDescription = "Jump")
+                         }
+                    }
+                }
             )
+            
+            if (showJumpDialog) {
+                JumpDialog(
+                    onDismiss = { showJumpDialog = false },
+                    onJump = { addr ->
+                        viewModel.jumpToAddress(addr)
+                        showJumpDialog = false
+                    }
+                )
+            }
         },
         bottomBar = {
-            // Only show bottom bar when we have success (or maybe allow navigation even if empty?)
-            // For now, let's allow it to be visible so the screen structure feels stable, 
-            // even if content is loading/error.
+            // Two-layer Bottom Navigation
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 shadowElevation = 8.dp
             ) {
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    edgePadding = 0.dp,
-                    containerColor = Color.Transparent, // Transparent to use Surface color
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                Column {
+                    // Level 2: Sub-tabs (Text only)
+                    when (selectedCategory) {
+                        MainCategory.List -> {
+                             ScrollableTabRow(
+                                selectedTabIndex = selectedListTabIndex,
+                                edgePadding = 0.dp,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedListTabIndex]),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                listTabs.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = selectedListTabIndex == index,
+                                        onClick = { selectedListTabIndex = index },
+                                        text = { Text(text = title) }
+                                    )
+                                }
+                            }
+                        }
+                        MainCategory.Detail -> {
+                             TabRow(
+                                selectedTabIndex = selectedDetailTabIndex,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedDetailTabIndex]),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                detailTabs.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = selectedDetailTabIndex == index,
+                                        onClick = { selectedDetailTabIndex = index },
+                                        text = { Text(text = title) }
+                                    )
+                                }
+                            }
+                        }
+                        MainCategory.Project -> {
+                            TabRow(
+                                selectedTabIndex = selectedProjectTabIndex,
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.primary,
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedProjectTabIndex]),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                projectTabs.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = selectedProjectTabIndex == index,
+                                        onClick = { selectedProjectTabIndex = index },
+                                        text = { Text(text = title) }
+                                    )
+                                }
+                            }
+                        }
                     }
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(text = title) }
-                        )
+
+                    // Level 1: Main Category (Icon + Title)
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ) {
+                        MainCategory.values().forEach { category ->
+                            NavigationBarItem(
+                                selected = selectedCategory == category,
+                                onClick = { selectedCategory = category },
+                                icon = { Icon(category.icon, contentDescription = category.title) },
+                                label = { Text(category.title) }
+                            )
+                        }
                     }
                 }
             }
@@ -166,32 +265,99 @@ fun ProjectScreen(
                     }
                 }
                 is ProjectUiState.Success -> {
-                    // Trigger data load when tab selected
-                    androidx.compose.runtime.LaunchedEffect(selectedTabIndex) {
-                        when (selectedTabIndex) {
-                            1 -> viewModel.loadSections()
-                            2 -> viewModel.loadSymbols()
-                            3 -> viewModel.loadImports()
-                            4 -> viewModel.loadRelocations()
-                            5 -> viewModel.loadStrings()
-                            6 -> viewModel.loadFunctions()
-                        }
-                    }
+                    // Logic to display content
+                    when (selectedCategory) {
+                        MainCategory.List -> {
+                            // Trigger data load based on selectedListTabIndex
+                            // Tabs: Overview, Sections, Symbols, Imports, Relocs, Strings, Functions
+                            androidx.compose.runtime.LaunchedEffect(selectedListTabIndex) {
+                                when (selectedListTabIndex) {
+                                    1 -> viewModel.loadSections()
+                                    2 -> viewModel.loadSymbols()
+                                    3 -> viewModel.loadImports()
+                                    4 -> viewModel.loadRelocations()
+                                    5 -> viewModel.loadStrings()
+                                    6 -> viewModel.loadFunctions()
+                                }
+                            }
 
-                    when (selectedTabIndex) {
-                        0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
-                        1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections)
-                        2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols)
-                        3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports)
-                        4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations)
-                        5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings)
-                        6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions)
-                        7 -> LogList(logs)
+                            when (selectedListTabIndex) {
+                                0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
+                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections)
+                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols)
+                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports)
+                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations)
+                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings)
+                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions)
+                            }
+                        }
+                        MainCategory.Detail -> {
+                            // Tabs: Hex, Disassembly, Decompile
+                             androidx.compose.runtime.LaunchedEffect(selectedDetailTabIndex) {
+                                when (selectedDetailTabIndex) {
+                                    0 -> viewModel.loadHex()
+                                    1 -> viewModel.loadDisassembly()
+                                    2 -> viewModel.loadDecompilation()
+                                }
+                            }
+                            
+                            when(selectedDetailTabIndex) {
+                                0 -> if (state.hexRows == null) {
+                                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                                } else {
+                                    val totalSize = state.binInfo?.size ?: 0L
+                                    val currentPos = state.hexRows.firstOrNull()?.addr ?: 0L
+                                    HexViewer(
+                                        hexRows = state.hexRows,
+                                        totalSize = totalSize,
+                                        currentPos = currentPos,
+                                        cursorAddress = state.cursorAddress,
+                                        onLoadMore = { append -> viewModel.loadHexMore(append) },
+                                        onScrollTo = { addr -> viewModel.jumpToAddress(addr) },
+                                        onByteClick = { addr -> viewModel.updateCursor(addr) }
+                                    )
+                                }
+                                1 -> if (state.disassembly == null) {
+                                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                                } else {
+                                    DisassemblyViewer(
+                                        instructions = state.disassembly,
+                                        cursorAddress = state.cursorAddress,
+                                        onInstructionClick = { addr -> viewModel.updateCursor(addr) },
+                                        onLoadMore = { append -> viewModel.loadDisasmMore(append) }
+                                    )
+                                }
+                                2 -> if (state.decompilation == null) {
+                                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                                } else {
+                                    DecompilationViewer(
+                                        data = state.decompilation,
+                                        cursorAddress = state.cursorAddress,
+                                        onAddressClick = { addr -> viewModel.updateCursor(addr) }
+                                    )
+                                }
+                            }
+                        }
+                        MainCategory.Project -> {
+                             // Project Category
+                            when (selectedProjectTabIndex) {
+                                0 -> PlaceholderScreen("Settings (Coming Soon)")
+                                1 -> PlaceholderScreen("Terminal (Coming Soon)")
+                                2 -> LogList(logs)
+                            }
+                        }
                     }
                 }
                 else -> {} // Configuring handled above
             }
         }
+    }
+}
+
+@Composable
+fun PlaceholderScreen(text: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.secondary)
     }
 }
 
@@ -356,5 +522,67 @@ fun LogItem(entry: top.wsdx233.r2droid.util.LogEntry) {
         },
         color = color,
         style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+    )
+}
+
+@Composable
+fun JumpDialog(
+    onDismiss: () -> Unit,
+    onJump: (Long) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Jump to Address") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { 
+                        text = it 
+                        error = null
+                    },
+                    label = { Text("Address (Hex)") },
+                    placeholder = { Text("e.g. 0x401000") },
+                    isError = error != null,
+                    singleLine = true
+                )
+                if (error != null) {
+                    Text(
+                        text = error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    val addrStr = text.removePrefix("0x").trim()
+                    if (addrStr.isBlank()) {
+                        error = "Address cannot be empty"
+                        return@TextButton
+                    }
+                    try {
+                        val addr = addrStr.toLong(16)
+                        onJump(addr)
+                        onDismiss()
+                    } catch (e: NumberFormatException) {
+                         error = "Invalid hex address"
+                    }
+                }
+            ) {
+                Text("Go")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
     )
 }

@@ -10,7 +10,8 @@ data class BinInfo(
     val compiled: String,
     val language: String,
     val machine: String,
-    val subSystem: String
+    val subSystem: String,
+    val size: Long = 0L
 ) {
     companion object {
         fun fromJson(json: JSONObject): BinInfo {
@@ -22,7 +23,8 @@ data class BinInfo(
                 compiled = json.optString("compiled", ""),
                 language = json.optString("lang", "Unknown"),
                 machine = json.optString("machine", "Unknown"),
-                subSystem = json.optString("subsys", "Unknown")
+                subSystem = json.optString("subsys", "Unknown"),
+                size = json.optLong("size", 0) // Typically in iIj details or core
             )
         }
     }
@@ -144,3 +146,89 @@ data class FunctionInfo(
         }
     }
 }
+
+data class DecompilationData(
+    val code: String,
+    val annotations: List<DecompilationAnnotation>
+) {
+    companion object {
+        fun fromJson(json: JSONObject): DecompilationData {
+            val code = json.optString("code", "")
+            val notesJson = json.optJSONArray("annotations")
+            val annotations = mutableListOf<DecompilationAnnotation>()
+            if (notesJson != null) {
+                for (i in 0 until notesJson.length()) {
+                     annotations.add(DecompilationAnnotation.fromJson(notesJson.getJSONObject(i)))
+                }
+            }
+            return DecompilationData(code, annotations)
+        }
+    }
+}
+
+data class DecompilationAnnotation(
+    val start: Int,
+    val end: Int,
+    val type: String,
+    val syntaxHighlight: String? = null,
+    val offset: Long = 0
+) {
+    companion object {
+        fun fromJson(json: JSONObject): DecompilationAnnotation {
+            return DecompilationAnnotation(
+                start = json.optInt("start", 0),
+                end = json.optInt("end", 0),
+                type = json.optString("type", ""),
+                syntaxHighlight = json.optString("syntax_highlight").takeIf { it.isNotEmpty() },
+                offset = json.optLong("offset", 0)
+            )
+        }
+    }
+}
+
+data class DisasmInstruction(
+    val addr: Long,
+    val opcode: String,
+    val bytes: String,
+    val type: String,
+    val size: Int,
+    val disasm: String,
+    val family: String?
+) {
+    companion object {
+        fun fromJson(json: JSONObject): DisasmInstruction {
+            return DisasmInstruction(
+                addr = json.optLong("addr", 0),
+                opcode = json.optString("opcode", ""),
+                bytes = json.optString("bytes", ""),
+                type = json.optString("type", ""),
+                size = json.optInt("size", 0),
+                disasm = json.optString("disasm", ""),
+                family = json.optString("family", "")
+            )
+        }
+    }
+}
+
+data class EntryPoint(
+    val vAddr: Long,
+    val pAddr: Long,
+    val bAddr: Long,
+    val lAddr: Long,
+    val hAddr: Long,
+    val type: String
+) {
+    companion object {
+        fun fromJson(json: JSONObject): EntryPoint {
+            return EntryPoint(
+                vAddr = json.optLong("vaddr", 0),
+                pAddr = json.optLong("paddr", 0),
+                bAddr = json.optLong("baddr", 0),
+                lAddr = json.optLong("laddr", 0),
+                hAddr = json.optLong("haddr", 0),
+                type = json.optString("type", "")
+            )
+        }
+    }
+}
+

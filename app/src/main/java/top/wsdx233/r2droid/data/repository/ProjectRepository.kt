@@ -96,4 +96,86 @@ class ProjectRepository {
             list
         }
     }
-}
+
+
+    suspend fun getHexDump(offset: Long, length: Int): Result<ByteArray> {
+        // pxj: Hex Dump
+        val cmd = "pxj $length @ $offset"
+        return R2PipeManager.executeJson(cmd).mapCatching { output ->
+             if (output.isBlank()) return@mapCatching ByteArray(0)
+             val jsonArray = JSONArray(output)
+             val bytes = ByteArray(jsonArray.length())
+             for (i in 0 until jsonArray.length()) {
+                 bytes[i] = jsonArray.getInt(i).toByte()
+             }
+             bytes
+        }
+    }
+
+    suspend fun getDisassembly(offset: Long, count: Int): Result<List<DisasmInstruction>> {
+        // pdj: Print Disassembly
+        val cmd = "pdj $count @ $offset"
+        return R2PipeManager.executeJson(cmd).mapCatching { output ->
+            if (output.isBlank()) return@mapCatching emptyList()
+            val jsonArray = JSONArray(output)
+            val list = mutableListOf<DisasmInstruction>()
+            for (i in 0 until jsonArray.length()) {
+                list.add(DisasmInstruction.fromJson(jsonArray.getJSONObject(i)))
+            }
+            list
+        }
+    }
+
+    suspend fun getDecompilation(offset: Long): Result<DecompilationData> {
+        // pdgj: Print Decompiled Code (User specified command/format)
+        // Note: standard r2 might behave differently, assuming "pdgj" returns the structure provided by user.
+        val cmd = "pdgj @ $offset"
+         return R2PipeManager.executeJson(cmd).mapCatching { output ->
+            if (output.isBlank()) throw RuntimeException("Empty decompilation output")
+            val json = JSONObject(output)
+            DecompilationData.fromJson(json)
+        }
+    }
+    suspend fun getFunctionStart(addr: Long): Result<Long> {
+        // Find function containing addr.
+        // afij @ addr returns function info, including offset (start).
+        // If not in function, it might return empty or error.
+        val cmd = "afij @ $addr"
+        return R2PipeManager.executeJson(cmd).mapCatching { output ->
+             if (output.isBlank() || output == "[]") {
+                  // Fallback: Just return the address if not found? 
+                  // Or assume it's a function start?
+                  // Let's return the address itself to be safe, or error?
+                  // User wants "get function where pointer is located".
+                  // If not in function, this fails.
+                  // Try `isj` to find closest symbol?
+                  // For now return addr.
+                  return@mapCatching addr
+             }
+             val jsonArray = JSONArray(output)
+             if (jsonArray.length() > 0) {
+                 val funcInfo = jsonArray.getJSONObject(0)
+                 funcInfo.optLong("offset", addr)
+             } else {
+                 addr
+             }
+        }
+    }
+
+
+    suspend fun getEntryPoints(): Result<List<EntryPoint>> {
+        // iej: Entry Points
+        return R2PipeManager.executeJson("iej").mapCatching { output ->
+            if (output.isBlank()) return@mapCatching emptyList()
+            val jsonArray = JSONArray(output)
+            val list = mutableListOf<EntryPoint>()
+            for (i in 0 until jsonArray.length()) {
+                list.add(EntryPoint.fromJson(jsonArray.getJSONObject(i)))
+            }
+            list
+        }
+    }
+
+    }
+
+
