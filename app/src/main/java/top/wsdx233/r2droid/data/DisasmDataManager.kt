@@ -93,6 +93,14 @@ class DisasmDataManager(
     }
     
     /**
+     * Get instruction by address.
+     */
+    fun getInstructionAtAddress(addr: Long): DisasmInstruction? {
+        // Try finding it in loaded instructions
+        return allInstructions.find { it.addr == addr }
+    }
+    
+    /**
      * Find the closest index to an address.
      * If the exact address is not found, returns the index of the closest instruction.
      */

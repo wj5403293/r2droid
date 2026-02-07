@@ -36,6 +36,11 @@ sealed class ProjectUiState {
     data class Error(val message: String) : ProjectUiState()
 }
 
+data class XrefsState(
+    val visible: Boolean = false,
+    val data: List<Xref> = emptyList()
+)
+
 class ProjectViewModel : ViewModel() {
     private val repository = ProjectRepository()
 
@@ -44,6 +49,10 @@ class ProjectViewModel : ViewModel() {
 
     // Expose logs from LogManager
     val logs: StateFlow<List<top.wsdx233.r2droid.util.LogEntry>> = top.wsdx233.r2droid.util.LogManager.logs
+    
+    // Xrefs State
+//    private val _xrefsState = MutableStateFlow(XrefsState())
+//    val xrefsState: StateFlow<XrefsState> = _xrefsState.asStateFlow()
     
     // === Hex Virtualization ===
     // HexDataManager for virtualized hex viewing
@@ -603,6 +612,86 @@ class ProjectViewModel : ViewModel() {
 
     fun retryLoadAll() {
         loadOverview()
+    }
+    
+//    fun fetchXrefs(addr: Long) {
+//        viewModelScope.launch {
+//            val xrefs = repository.getXrefs(addr).getOrDefault(emptyList())
+//            _xrefsState.value = XrefsState(visible = true, data = xrefs)
+//        }
+//    }
+//
+//    fun dismissXrefs() {
+//        _xrefsState.value = _xrefsState.value.copy(visible = false)
+//    }
+
+    // === Modification Commands ===
+    
+    fun writeHex(addr: Long, hex: String) {
+        viewModelScope.launch {
+            // "wx [hex] @ [addr]"
+            R2PipeManager.execute("wx $hex @ $addr")
+            // Reload chunks to reflect changes
+            hexDataManager?.clearCache()
+            disasmDataManager?.clearCache()
+            _hexCacheVersion.value++
+            _disasmCacheVersion.value++
+            
+            // Reload displayed data
+            hexDataManager?.loadChunkIfNeeded(currentOffset)
+            disasmDataManager?.loadChunkAroundAddress(currentOffset)
+        }
+    }
+    
+    fun writeString(addr: Long, text: String) {
+        viewModelScope.launch {
+            // "w [text] @ [addr]" - need to escape properly or use w wide string if needed
+            // For safety, let's use "w" which writes string
+            // Escape quotes in string
+            val escaped = text.replace("\"", "\\\"")
+            R2PipeManager.execute("w \"$escaped\" @ $addr")
+            
+            hexDataManager?.clearCache()
+            disasmDataManager?.clearCache()
+            _hexCacheVersion.value++
+            _disasmCacheVersion.value++
+            
+            hexDataManager?.loadChunkIfNeeded(currentOffset)
+            disasmDataManager?.loadChunkAroundAddress(currentOffset)
+        }
+    }
+    
+    fun writeAsm(addr: Long, asm: String) {
+        viewModelScope.launch {
+            // "wa [asm] @ [addr]"
+            val escaped = asm.replace("\"", "\\\"") // enclose in quotes to be safe? usually wa instruction is fine
+            R2PipeManager.execute("wa \"$escaped\" @ $addr")
+            
+            hexDataManager?.clearCache()
+            disasmDataManager?.clearCache()
+            _hexCacheVersion.value++
+            _disasmCacheVersion.value++
+            
+            hexDataManager?.loadChunkIfNeeded(currentOffset)
+            disasmDataManager?.loadChunkAroundAddress(currentOffset)
+        }
+    }
+    
+    // Generic command execution
+    fun executeCommand(cmd: String, callback: (String) -> Unit) {
+        viewModelScope.launch {
+            val result = R2PipeManager.execute(cmd)
+            val output = result.getOrDefault("")
+            callback(output)
+            
+            // If command might modify data, reload
+            if (cmd.startsWith("w") || cmd.startsWith("p")) {
+                hexDataManager?.clearCache()
+                disasmDataManager?.clearCache()
+                _hexCacheVersion.value++
+                _disasmCacheVersion.value++
+            }
+        }
     }
 
     override fun onCleared() {

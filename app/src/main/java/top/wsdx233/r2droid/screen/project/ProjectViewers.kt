@@ -2,6 +2,11 @@ package top.wsdx233.r2droid.screen.project
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -569,9 +574,18 @@ fun DisassemblyViewer(
     onInstructionClick: (Long) -> Unit
 ) {
     val disasmDataManager = viewModel.disasmDataManager
-    
-    // Observe cache version to trigger recomposition when chunks load
     val cacheVersion by viewModel.disasmCacheVersion.collectAsState()
+    val xrefsState by viewModel.xrefsState.collectAsState()
+    
+    // Menu & Dialog States
+    var showMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var menuTargetAddress by remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+    
+    var showModifyDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var modifyType by remember { androidx.compose.runtime.mutableStateOf("hex") } // hex, string, asm
+    var showCustomCommandDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    
+    val clipboardManager = LocalClipboardManager.current
     
     if (disasmDataManager == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -698,10 +712,54 @@ fun DisassemblyViewer(
                 }
                 
                 if (instr != null) {
+                    val isThisRowMenuTarget = showMenu && menuTargetAddress == instr.addr
                     DisasmRow(
                         instr = instr, 
                         isSelected = instr.addr == cursorAddress, 
-                        onClick = { onInstructionClick(instr.addr) }
+                        onClick = { 
+                            if (instr.addr == cursorAddress) {
+                                // Already selected, show menu
+                                menuTargetAddress = instr.addr
+                                showMenu = true
+                            } else {
+                                onInstructionClick(instr.addr) 
+                            }
+                        },
+                        onLongClick = {
+                            // 先更新选中状态
+                            if (instr.addr != cursorAddress) {
+                                onInstructionClick(instr.addr)
+                            }
+                            // 然后设置菜单目标地址并显示菜单
+                            menuTargetAddress = instr.addr
+                            showMenu = true
+                        },
+                        showMenu = isThisRowMenuTarget,
+                        menuContent = {
+                            DisasmContextMenu(
+                                expanded = isThisRowMenuTarget,
+                                address = instr.addr,
+                                instr = instr,
+                                onDismiss = { showMenu = false },
+                                onCopy = { text ->
+                                    clipboardManager.setText(AnnotatedString(text))
+                                    showMenu = false
+                                },
+                                onModify = { type ->
+                                    modifyType = type
+                                    showModifyDialog = true
+                                    showMenu = false
+                                },
+                                onXrefs = {
+                                    viewModel.fetchXrefs(instr.addr)
+                                    showMenu = false
+                                },
+                                onCustomCommand = {
+                                    showCustomCommandDialog = true
+                                    showMenu = false
+                                }
+                            )
+                        }
                     )
                 } else {
                     // Placeholder row
@@ -791,6 +849,62 @@ fun DisassemblyViewer(
                 fontFamily = FontFamily.Monospace
             )
         }
+        
+        // Context Menu
+        // Xrefs Dialog
+        if (xrefsState.visible) {
+             if (xrefsState.isLoading) {
+                 AlertDialog(
+                     onDismissRequest = { viewModel.dismissXrefs() },
+                     title = { Text("Loading Xrefs...") },
+                     text = { 
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                     },
+                     confirmButton = {}
+                 )
+             } else {
+                 XrefsDialog(
+                     xrefs = xrefsState.data,
+                     onDismiss = { viewModel.dismissXrefs() },
+                     onJump = { addr ->
+                         viewModel.jumpToAddress(addr)
+                         viewModel.dismissXrefs()
+                     }
+                 )
+             }
+        }
+        
+        // Modify Dialog
+        if (showModifyDialog && menuTargetAddress != null) {
+            val title = when(modifyType) {
+                "hex" -> "Modify Hex (wx)"
+                "string" -> "Modify String (w)"
+                "asm" -> "Modify Opcode (wa)"
+                else -> "Modify"
+            }
+            ModifyDialog(
+                title = title,
+                initialValue = "",
+                onDismiss = { showModifyDialog = false },
+                onConfirm = { value ->
+                     when(modifyType) {
+                        "hex" -> viewModel.writeHex(menuTargetAddress!!, value)
+                        "string" -> viewModel.writeString(menuTargetAddress!!, value)
+                        "asm" -> viewModel.writeAsm(menuTargetAddress!!, value)
+                     }
+                }
+            )
+        }
+        
+        // Custom Command Dialog
+        if (showCustomCommandDialog) {
+            CustomCommandDialog(
+                onDismiss = { showCustomCommandDialog = false },
+                onConfirm = { /* handled internally */ }
+            )
+        }
     }
 }
 
@@ -831,7 +945,14 @@ fun DisasmPlaceholderRow() {
 }
 
 @Composable
-fun DisasmRow(instr: DisasmInstruction, isSelected: Boolean, onClick: () -> Unit) {
+fun DisasmRow(
+    instr: DisasmInstruction, 
+    isSelected: Boolean, 
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    showMenu: Boolean = false,
+    menuContent: @Composable () -> Unit = {}
+) {
     // Cutter style coloring logic
     val opcodeColor = when (instr.type) {
         "call", "ucall" -> Color(0xFF42A5F5) // Blue
@@ -843,41 +964,53 @@ fun DisasmRow(instr: DisasmInstruction, isSelected: Boolean, onClick: () -> Unit
         else -> MaterialTheme.colorScheme.onSurface
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .clickable(onClick = onClick)
-            .padding(vertical = 1.dp) // tighter spacing
-    ) {
-        // Addr
-        Text(
-            text = "0x%08x".format(instr.addr),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            modifier = Modifier.width(90.dp)
-        )
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                .pointerInput(onClick, onLongClick) {
+                    detectTapGestures(
+                        onTap = { onClick() },
+                        onLongPress = { onLongClick() }
+                    )
+                }
+                .padding(vertical = 1.dp) // tighter spacing
+        ) {
+            // Addr
+            Text(
+                text = "0x%08x".format(instr.addr),
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.Gray,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                modifier = Modifier.width(90.dp)
+            )
+            
+            // Bytes (Optional - usually hidden in graph mode but shown in linear)
+            val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
+            Text(
+                text = bytesStr.padEnd(14),
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.DarkGray,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                modifier = Modifier.width(100.dp)
+            )
+            
+            // Opcode / Disasm
+            Text(
+                text = instr.disasm,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 12.sp,
+                fontWeight = if(instr.type in listOf("call", "jmp", "ret")) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+        }
         
-        // Bytes (Optional - usually hidden in graph mode but shown in linear)
-        val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
-        Text(
-            text = bytesStr.padEnd(14),
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.DarkGray,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            modifier = Modifier.width(100.dp)
-        )
-        
-        // Opcode / Disasm
-        Text(
-            text = instr.disasm,
-            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else opcodeColor,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 12.sp,
-            fontWeight = if(instr.type in listOf("call", "jmp", "ret")) FontWeight.Bold else FontWeight.Normal,
-            modifier = Modifier.weight(1f)
-        )
+        // Render menu inside Box so it anchors to this row
+        if (showMenu) {
+            menuContent()
+        }
     }
 }
 
@@ -1096,6 +1229,93 @@ fun DecompilationViewer(
                         }
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun DisasmContextMenu(
+    expanded: Boolean,
+    address: Long,
+    instr: DisasmInstruction?,
+    onDismiss: () -> Unit,
+    onCopy: (String) -> Unit,
+    onModify: (String) -> Unit,
+    onXrefs: () -> Unit,
+    onCustomCommand: () -> Unit
+) {
+    if (expanded) {
+        // Need to hoist state of submenu? DropdownMenu handles content recomposition.
+        // But we need a persistent state for the submenu.
+        var showCopySubMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+        
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss
+        ) {
+            if (!showCopySubMenu) {
+                DropdownMenuItem(
+                    text = { Text("Copy...") },
+                    onClick = { showCopySubMenu = true },
+                    trailingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) }
+                )
+                
+                HorizontalDivider()
+                
+                DropdownMenuItem(
+                    text = { Text("Modify Hex") },
+                    onClick = { onModify("hex") }
+                )
+                DropdownMenuItem(
+                    text = { Text("Modify String") },
+                    onClick = { onModify("string") }
+                )
+                DropdownMenuItem(
+                    text = { Text("Modify Opcode") },
+                    onClick = { onModify("asm") }
+                )
+                
+                HorizontalDivider()
+                
+                DropdownMenuItem(
+                    text = { Text("Xrefs") },
+                    onClick = { onXrefs() }
+                )
+                
+                DropdownMenuItem(
+                    text = { Text("Custom Command...") },
+                    onClick = { onCustomCommand() }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text("Back") },
+                    onClick = { showCopySubMenu = false },
+                    leadingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, null) }
+                )
+                HorizontalDivider()
+                
+                DropdownMenuItem(
+                    text = { Text("Address") },
+                    onClick = { onCopy("0x%08x".format(address)) }
+                )
+                if (instr != null) {
+                    DropdownMenuItem(
+                        text = { Text("Opcode") },
+                        onClick = { onCopy(instr.disasm) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Bytes") },
+                        onClick = { onCopy(instr.bytes) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Full Row") },
+                        onClick = { 
+                            val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
+                            onCopy("0x%08x  %s  %s".format(address, bytesStr.padEnd(14), instr.disasm)) 
+                        }
+                    )
+                }
             }
         }
     }

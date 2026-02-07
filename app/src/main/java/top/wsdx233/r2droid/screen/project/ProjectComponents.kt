@@ -18,11 +18,14 @@ import top.wsdx233.r2droid.data.model.*
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.data.model.*
 import top.wsdx233.r2droid.ui.component.FilterableList
 
@@ -553,6 +556,129 @@ fun XrefsDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+fun ModifyDialog(
+    title: String,
+    initialValue: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var text by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(initialValue) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { 
+                    onConfirm(text)
+                    onDismiss()
+                }
+            ) {
+                Text("Write")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun CustomCommandDialog(
+    initialCommand: String = "",
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var command by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(initialCommand) }
+    var output by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    var isExecuting by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    
+    // We need a coroutine scope to execute commands and update UI
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Execute r2 Command") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = command,
+                        onValueChange = { command = it },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        placeholder = { Text("e.g. iI") },
+                        label = { Text("Command") }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (command.isNotBlank()) {
+                                isExecuting = true
+                                scope.launch {
+                                    val result = top.wsdx233.r2droid.util.R2PipeManager.execute(command)
+                                    output = result.getOrDefault("Error: ${result.exceptionOrNull()?.message}")
+                                    isExecuting = false
+                                }
+                            }
+                        },
+                        enabled = !isExecuting
+                    ) {
+                        if (isExecuting) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Run")
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Output:", 
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color(0xFFEEEEEE), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                        .padding(8.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    Text(
+                        text = output.ifEmpty { "No output" },
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = if (output.isEmpty()) Color.Gray else Color.Black
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close") // Keep dialog open until explicitly closed
             }
         }
     )
