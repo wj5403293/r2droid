@@ -18,11 +18,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuOpen
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MenuOpen
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PowerInput
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -146,7 +149,7 @@ fun ProjectScreen(
                              }
                          }
                          androidx.compose.material3.IconButton(onClick = { showJumpDialog = true }) {
-                             Icon(Icons.Filled.PlayArrow, contentDescription = "Jump")
+                             Icon(Icons.AutoMirrored.Filled.MenuOpen, contentDescription = "Jump")
                          }
                     }
                 }

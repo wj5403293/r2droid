@@ -118,27 +118,97 @@ fun HexViewer(
         viewModel.preloadHexAround(addr)
     }
 
+    // Calculate which column is selected (0-7 for each 8-byte row)
+    val selectedColumn = (cursorAddress % 8).toInt()
+    // Light paper yellow for highlighting - 30% transparent overlay
+    val highlightColor = Color(0x4DFFFDE7) // ~30% alpha yellow
+    
     Column(Modifier.fillMaxSize()) {
         // Sticky Header: 0 1 2 3 4 5 6 7
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFFE0E0E0))
-                .padding(vertical = 4.dp)
+                .height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Spacer(Modifier.width(70.dp)) // Addr space matching visual row
-            // 8 columns
-             (0..7).forEach { 
-                 Text(
-                     it.toString(), 
-                     modifier = Modifier.weight(1f), 
-                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                     fontSize = 12.sp,
-                     color = Color.Gray
-                 ) 
-             }
-            Spacer(Modifier.width(8.dp)) // Gap
-            Text("01234567", fontSize = 12.sp, color = Color.Gray, letterSpacing = 2.sp)
+            // Empty space for address column (matching data row)
+            Box(
+                modifier = Modifier
+                    .width(70.dp)
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Empty - just spacing to match address column below
+            }
+            
+            // Divider matching data row
+            VerticalDivider()
+            
+            // 8 columns with divider between 4th and 5th (index 3 and 4)
+            Row(Modifier.weight(1f).padding(vertical = 4.dp)) {
+                (0..7).forEach { colIndex ->
+                    // Add divider before column 4
+                    if (colIndex == 4) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(Color(0xFFBDBDBD))
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Overlay highlight for selected column
+                        if (colIndex == selectedColumn) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(highlightColor)
+                            )
+                        }
+                        Text(
+                            colIndex.toString(),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+            
+            // Divider matching data row
+            VerticalDivider()
+            
+            // ASCII header
+            Row(
+                Modifier.width(100.dp).padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+            ) {
+                (0..7).forEach { i ->
+                    Box(
+                        modifier = Modifier
+                            .width(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Overlay highlight for selected column
+                        if (i == selectedColumn) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(highlightColor)
+                            )
+                        }
+                        Text(
+                            i.toString(),
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
             Spacer(Modifier.width(4.dp))
         }
 
@@ -186,6 +256,8 @@ fun HexViewer(
                                 bytes = b1.map { it },
                                 index = 0,
                                 cursorAddress = cursorAddress,
+                                selectedColumn = selectedColumn,
+                                highlightColor = highlightColor,
                                 onByteClick = onByteClick
                             )
                             if (b2.isNotEmpty()) {
@@ -194,6 +266,8 @@ fun HexViewer(
                                     bytes = b2.map { it },
                                     index = 1,
                                     cursorAddress = cursorAddress,
+                                    selectedColumn = selectedColumn,
+                                    highlightColor = highlightColor,
                                     onByteClick = onByteClick
                                 )
                             }
@@ -331,31 +405,41 @@ fun HexVisualRow(
     addr: Long, 
     bytes: List<Byte>, 
     index: Int, 
-    cursorAddress: Long, 
+    cursorAddress: Long,
+    selectedColumn: Int,
+    highlightColor: Color,
     onByteClick: (Long) -> Unit
 ) {
     // 8 bytes row
     val oddRow = (addr / 8) % 2 == 1L
-    val bgColor = if (oddRow) Color(0xFFE8EAF6) else Color.White
+    
+    // Check if this row contains the cursor
+    val rowStartAddr = addr
+    val rowEndAddr = addr + bytes.size - 1
+    val isRowSelected = cursorAddress >= rowStartAddr && cursorAddress <= rowEndAddr
+    
+    // Base background: alternating colors (zebra stripes)
+    val baseBgColor = if (oddRow) Color(0xFFE8EAF6) else Color.White
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(bgColor)
+            .background(baseBgColor)
             .height(IntrinsicSize.Min)
     ) {
-        // Address with gray background
+        // Address with gray background - CENTERED, BOLD, DARK GRAY
         Box(
             modifier = Modifier
                 .width(70.dp)
                 .fillMaxHeight()
-                .background(Color(0xFFDDDDDD)) // Gray background for address
-                .padding(start = 4.dp, top = 2.dp)
+                .background(Color(0xFFDDDDDD)), // Gray background for address
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "%06X".format(addr), 
-                color = Color.Black,
+                color = Color(0xFF424242), // Dark gray
                 fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 lineHeight = 14.sp
             )
@@ -363,19 +447,43 @@ fun HexVisualRow(
         
         VerticalDivider()
         
-        // Hex
-        Row(Modifier.weight(1f)) {
+        // Hex - with divider between 4th and 5th columns, and column highlighting
+        Row(Modifier.weight(1f).fillMaxHeight()) {
              bytes.forEachIndexed { i, b ->
                 val byteAddr = addr + i
                 val isSelected = (byteAddr == cursorAddress)
+                val isColumnHighlighted = (i == selectedColumn)
+                
+                // Add divider before column 4 (between 3rd and 4th column, 0-indexed)
+                if (i == 4) {
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .fillMaxHeight()
+                            .background(Color(0xFFBDBDBD))
+                    )
+                }
+                
+                // Background: base stays transparent, overlay highlight if needed
+                // For selected cell: use primary container
+                // For column/row highlight: use semi-transparent yellow overlay
                 
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxHeight()
                         .clickable { onByteClick(byteAddr) }
                         .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Overlay: row highlight or column highlight (30% transparent yellow)
+                    if (!isSelected && (isRowSelected || isColumnHighlighted)) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(highlightColor)
+                        )
+                    }
                     Text(
                          text = "%02X".format(b),
                          fontFamily = FontFamily.Monospace,
@@ -387,22 +495,35 @@ fun HexVisualRow(
                 }
              }
              // Padding if < 8 bytes
-             repeat(8 - bytes.size) {
+             repeat(8 - bytes.size) { padIndex ->
+                 val actualIndex = bytes.size + padIndex
+                 // Add divider before column 4 even in padding area
+                 if (actualIndex == 4) {
+                     Box(
+                         modifier = Modifier
+                             .width(1.dp)
+                             .fillMaxHeight()
+                             .background(Color(0xFFBDBDBD))
+                     )
+                 }
                  Spacer(Modifier.weight(1f))
              }
         }
         
         VerticalDivider()
         
-        // ASCII
+        // ASCII with column highlighting
         Row(
             Modifier.width(100.dp).padding(start = 4.dp)
         ) {
             bytes.forEachIndexed { i, b ->
                 val byteAddr = addr + i
                 val isSelected = (byteAddr == cursorAddress)
+                val isColumnHighlighted = (i == selectedColumn)
                 val c = b.toInt().toChar()
                 val charStr = if (c.isISOControl() || !c.isDefined()) "." else c.toString()
+                
+                // Background: transparent, overlay highlight if needed
                 
                 Box(
                     modifier = Modifier
@@ -411,6 +532,14 @@ fun HexVisualRow(
                         .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Overlay: row highlight or column highlight (30% transparent yellow)
+                    if (!isSelected && (isRowSelected || isColumnHighlighted)) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(highlightColor)
+                        )
+                    }
                      Text(
                         text = charStr,
                         fontFamily = FontFamily.Monospace,
