@@ -156,7 +156,9 @@ fun ProjectScreen(
             )
             
             if (showJumpDialog) {
+                val currentAddress = (uiState as? ProjectUiState.Success)?.cursorAddress ?: 0L
                 JumpDialog(
+                    initialAddress = "0x%X".format(currentAddress),
                     onDismiss = { showJumpDialog = false },
                     onJump = { addr ->
                         viewModel.jumpToAddress(addr)
@@ -545,10 +547,11 @@ fun LogItem(entry: top.wsdx233.r2droid.util.LogEntry) {
 
 @Composable
 fun JumpDialog(
+    initialAddress: String,
     onDismiss: () -> Unit,
     onJump: (Long) -> Unit
 ) {
-    var text by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf(initialAddress) }
     var error by remember { mutableStateOf<String?>(null) }
 
     androidx.compose.material3.AlertDialog(
