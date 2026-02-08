@@ -1,5 +1,7 @@
 package top.wsdx233.r2droid.screen.project
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -69,7 +71,7 @@ fun UnifiedListItemWrapper(
             when (menuScreen) {
                 "Main" -> {
                     DropdownMenuItem(
-                        text = { Text("Copy") },
+                        text = { Text(stringResource(R.string.menu_copy)) },
                         onClick = { menuScreen = "Copy" },
                         trailingIcon = {
                             Icon(
@@ -80,7 +82,7 @@ fun UnifiedListItemWrapper(
                     )
                     if (address != null) {
                         DropdownMenuItem(
-                            text = { Text("Jump") },
+                            text = { Text(stringResource(R.string.menu_jump)) },
                             onClick = { menuScreen = "Jump" },
                             trailingIcon = {
                                 Icon(
@@ -90,7 +92,7 @@ fun UnifiedListItemWrapper(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Xrefs") },
+                            text = { Text(stringResource(R.string.menu_xrefs)) },
                             onClick = { 
                                 expanded = false
                                 actions.onShowXrefs(address)
@@ -100,13 +102,13 @@ fun UnifiedListItemWrapper(
                 }
                 "Copy" -> {
                     DropdownMenuItem(
-                        text = { Text("Back") },
+                        text = { Text(stringResource(R.string.menu_back)) },
                         onClick = { menuScreen = "Main" },
                         leadingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text("Name") },
+                        text = { Text(stringResource(R.string.menu_name)) },
                         onClick = { 
                             actions.onCopy(title)
                             expanded = false
@@ -115,7 +117,7 @@ fun UnifiedListItemWrapper(
                     )
                     if (address != null) {
                         DropdownMenuItem(
-                            text = { Text("Address") },
+                            text = { Text(stringResource(R.string.menu_address)) },
                             onClick = { 
                                 actions.onCopy("0x%X".format(address))
                                 expanded = false
@@ -124,7 +126,7 @@ fun UnifiedListItemWrapper(
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text("All") },
+                        text = { Text(stringResource(R.string.menu_all)) },
                         onClick = { 
                             actions.onCopy(fullText)
                             expanded = false
@@ -134,13 +136,13 @@ fun UnifiedListItemWrapper(
                 }
                 "Jump" -> {
                     DropdownMenuItem(
-                        text = { Text("Back") },
+                        text = { Text(stringResource(R.string.menu_back)) },
                         onClick = { menuScreen = "Main" },
                         leadingIcon = { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null) }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text("Hex Viewer") },
+                        text = { Text(stringResource(R.string.menu_hex_viewer)) },
                         onClick = { 
                             if (address != null) actions.onJumpToHex(address)
                             expanded = false
@@ -148,7 +150,7 @@ fun UnifiedListItemWrapper(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Disassembly") },
+                        text = { Text(stringResource(R.string.menu_disassembly)) },
                         onClick = { 
                             if (address != null) actions.onJumpToDisasm(address)
                             expanded = false
@@ -178,19 +180,19 @@ fun OverviewCard(info: BinInfo) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Binary Overview",
+                text = stringResource(R.string.binary_overview_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary
             )
             HorizontalDivider()
-            InfoRow("Arch", info.arch)
-            InfoRow("Bits", "${info.bits}")
-            InfoRow("OS", info.os)
-            InfoRow("Type", info.type)
-            InfoRow("Machine", info.machine)
-            InfoRow("Language", info.language)
-            InfoRow("Compiled", info.compiled)
-            InfoRow("SubSystem", info.subSystem)
+            InfoRow(stringResource(R.string.binary_arch), info.arch)
+            InfoRow(stringResource(R.string.binary_bits), "${info.bits}")
+            InfoRow(stringResource(R.string.binary_os), info.os)
+            InfoRow(stringResource(R.string.binary_type), info.type)
+            InfoRow(stringResource(R.string.binary_machine), info.machine)
+            InfoRow(stringResource(R.string.binary_language), info.language)
+            InfoRow(stringResource(R.string.binary_compiled), info.compiled)
+            InfoRow(stringResource(R.string.binary_subsystem), info.subSystem)
         }
     }
 }
@@ -221,7 +223,7 @@ fun SectionList(sections: List<Section>, actions: ListItemActions, onRefresh: ((
     FilterableList(
         items = sections,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Sections...",
+        placeholder = stringResource(R.string.search_sections_hint),
         onRefresh = onRefresh
     ) { section ->
         SectionItem(section, actions)
@@ -282,7 +284,7 @@ fun SymbolList(symbols: List<Symbol>, actions: ListItemActions, onRefresh: (() -
     FilterableList(
         items = symbols,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Symbols...",
+        placeholder = stringResource(R.string.search_symbols_hint),
         onRefresh = onRefresh
     ) { symbol ->
         SymbolItem(symbol, actions)
@@ -333,7 +335,7 @@ fun ImportList(imports: List<ImportInfo>, actions: ListItemActions, onRefresh: (
     FilterableList(
         items = imports,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Imports...",
+        placeholder = stringResource(R.string.search_imports_hint),
         onRefresh = onRefresh
     ) { item ->
         ImportItem(item, actions)
@@ -383,7 +385,7 @@ fun RelocationList(relocations: List<Relocation>, actions: ListItemActions, onRe
     FilterableList(
         items = relocations,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Relocations...",
+        placeholder = stringResource(R.string.search_relocations_hint),
         onRefresh = onRefresh
     ) { relocation ->
         RelocationItem(relocation, actions)
@@ -418,7 +420,7 @@ fun StringList(strings: List<StringInfo>, actions: ListItemActions, onRefresh: (
     FilterableList(
         items = strings,
         filterPredicate = { item, query -> item.string.contains(query, ignoreCase = true) },
-        placeholder = "Search Strings...",
+        placeholder = stringResource(R.string.search_strings_hint),
         onRefresh = onRefresh
     ) { str ->
         StringItem(str, actions)
@@ -471,7 +473,7 @@ fun FunctionList(functions: List<FunctionInfo>, actions: ListItemActions, onRefr
     FilterableList(
         items = functions,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Functions...",
+        placeholder = stringResource(R.string.search_functions_hint),
         onRefresh = onRefresh
     ) { func ->
         FunctionItem(func, actions)
@@ -544,7 +546,7 @@ fun XrefsDialog(
         onDismissRequest = onDismiss,
         title = { 
             Column {
-                Text("Cross References")
+                Text(stringResource(R.string.xrefs_title))
                 Text(
                     text = "@ 0x${targetAddress.toString(16).uppercase()}",
                     style = MaterialTheme.typography.bodySmall,
@@ -559,7 +561,7 @@ fun XrefsDialog(
                     modifier = Modifier.fillMaxWidth().height(100.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("No cross references found.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.xrefs_no_found), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 Row(
@@ -583,7 +585,7 @@ fun XrefsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Refs From →",
+                                    text = stringResource(R.string.xrefs_refs_from),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -603,7 +605,7 @@ fun XrefsDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "No outgoing refs",
+                                    stringResource(R.string.xrefs_no_outgoing),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -642,7 +644,7 @@ fun XrefsDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "← Refs To",
+                                    text = stringResource(R.string.xrefs_refs_to),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -662,7 +664,7 @@ fun XrefsDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "No incoming refs",
+                                    stringResource(R.string.xrefs_no_incoming),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -687,7 +689,7 @@ fun XrefsDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(stringResource(R.string.xrefs_close))
             }
         }
     )

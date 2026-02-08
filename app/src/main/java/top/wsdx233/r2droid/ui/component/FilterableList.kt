@@ -1,5 +1,8 @@
 package top.wsdx233.r2droid.ui.component
 
+import androidx.compose.ui.res.stringResource
+import top.wsdx233.r2droid.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,10 +22,11 @@ fun <T> FilterableList(
     items: List<T>,
     filterPredicate: (T, String) -> Boolean,
     modifier: Modifier = Modifier,
-    placeholder: String = "Search...",
+    placeholder: String? = null,
     onRefresh: (() -> Unit)? = null,
     itemContent: @Composable (T) -> Unit
 ) {
+    val actualPlaceholder = placeholder ?: stringResource(R.string.common_search)
     var searchQuery by remember { mutableStateOf("") }
     var debouncedQuery by remember { mutableStateOf("") }
 
@@ -52,7 +56,7 @@ fun <T> FilterableList(
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it },
-                placeholder = placeholder,
+                placeholder = actualPlaceholder,
                 modifier = Modifier.weight(1f)
             )
             
@@ -60,7 +64,7 @@ fun <T> FilterableList(
                 IconButton(onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
+                        contentDescription = stringResource(R.string.common_refresh),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -95,11 +99,11 @@ fun SearchBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         placeholder = { Text(placeholder) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.common_search)) },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.common_clear))
                 }
             }
         },

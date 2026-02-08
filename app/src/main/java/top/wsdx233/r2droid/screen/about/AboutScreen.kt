@@ -1,5 +1,8 @@
 package top.wsdx233.r2droid.screen.about
 
+import androidx.compose.ui.res.stringResource
+import top.wsdx233.r2droid.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -13,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +71,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -95,7 +100,7 @@ fun AboutScreen(
             LargeTopAppBar(
                 title = { 
                     TypingText(
-                        text = "About This",
+                        text = stringResource(R.string.about_title),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
@@ -106,7 +111,7 @@ fun AboutScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Rounded.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.about_back_desc)
                         )
                     }
                 },
@@ -162,8 +167,8 @@ fun AboutScreen(
                 StaggeredCodeCard(
                     index = 0,
                     variableName = "author",
-                    value = "\"Wsdx233\"",
-                    comment = "// The Creator",
+                    value = "\"${stringResource(R.string.about_author_name)}\"",
+                    comment = stringResource(R.string.about_author_comment),
                     icon = Icons.Rounded.Person,
                     onClick = {
                         uriHandler.openUri("https://github.com/wsdx233")
@@ -173,8 +178,8 @@ fun AboutScreen(
                 StaggeredCodeCard(
                     index = 1,
                     variableName = "contact",
-                    value = "QQ(1284321744)\nGroup(1014171868)",
-                    comment = "// Reach out",
+                    value = stringResource(R.string.about_contact_value),
+                    comment = stringResource(R.string.about_contact_comment),
                     icon = Icons.Rounded.Commit, // Use distinct icon
                     onClick = {
                         uriHandler.openUri("https://qm.qq.com/q/WUGtRZbDiO")
@@ -184,8 +189,8 @@ fun AboutScreen(
                 StaggeredCodeCard(
                     index = 2,
                     variableName = "repo",
-                    value = "git clone .../r2droid",
-                    comment = "// Source Code",
+                    value = stringResource(R.string.about_repo_value),
+                    comment = stringResource(R.string.about_repo_comment),
                     icon = Icons.Rounded.Code,
                     onClick = {
                         uriHandler.openUri("https://github.com/wsdx233/r2droid")
@@ -195,8 +200,8 @@ fun AboutScreen(
                 StaggeredCodeCard(
                     index = 3,
                     variableName = "core",
-                    value = "radare2 @ 6.0.8",
-                    comment = "// Powering the engine",
+                    value = stringResource(R.string.about_core_value),
+                    comment = stringResource(R.string.about_core_comment),
                     icon = Icons.Rounded.DataObject,
                     onClick = {}
                 )
@@ -205,7 +210,7 @@ fun AboutScreen(
                 
                 // Footer
                 Text(
-                    text = "Build with ❤️ & Kotlin",
+                    text = stringResource(R.string.about_footer),
                     modifier = Modifier.align(Alignment.CenterHorizontally).alpha(0.5f),
                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace)
                 )
@@ -218,6 +223,7 @@ fun AboutScreen(
 @Preview
 @Composable
 fun AppHeader() {
+    val r2DroidText = stringResource(R.string.about_r2droid)
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -245,11 +251,10 @@ fun AppHeader() {
                     .background(MaterialTheme.colorScheme.surface),
                  contentAlignment = Alignment.Center
             ) {
-                 Icon(
-                    imageVector = Icons.Rounded.DataObject,
-                    contentDescription = "App Logo",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(64.dp)
+                Image(
+                     painter = painterResource(id = R.drawable.icon),
+                    contentDescription = stringResource(R.string.about_logo_desc),
+                    modifier = Modifier.size(150.dp)
                 )
             }
         }
@@ -257,7 +262,7 @@ fun AppHeader() {
         Spacer(modifier = Modifier.height(24.dp))
         
         TypingText(
-            text = "R2Droid",
+            text = r2DroidText,
             style = MaterialTheme.typography.displayMedium.copy(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
@@ -269,7 +274,7 @@ fun AppHeader() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "> Radare2 on Android",
+            text = stringResource(R.string.about_motto),
             style = MaterialTheme.typography.bodyLarge.copy(
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.primary

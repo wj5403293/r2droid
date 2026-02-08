@@ -24,4 +24,223 @@
 
     <!-- Project Screen -->
     <string name="project_placeholder">项目界面 (占位符)</string>
+    <string name="project_save">保存项目</string>
+    <string name="project_save_title">保存项目</string>
+    <string name="project_save_name_hint">项目名称</string>
+    <string name="project_save_success">项目保存成功</string>
+    <string name="project_save_error">保存项目失败</string>
+    <string name="project_update_success">项目更新成功</string>
+    <string name="project_exit_title">退出且不保存？</string>
+    <string name="project_exit_message">您有一个未保存的分析会话。退出前是否将其保存为项目？</string>
+    <string name="project_exit_save">保存</string>
+    <string name="project_exit_discard">丢弃</string>
+    <string name="project_startup_flags">启动参数</string>
+    <string name="project_startup_flags_hint">额外的 r2 参数 (例如 -w -n)</string>
+    <string name="project_startup_flags_desc">这些参数将在恢复此项目时应用</string>
+    <!-- About Screen -->
+    <string name="about_title">关于</string>
+    <string name="about_back_desc">返回</string>
+    <string name="about_author_name">Wsdx233</string>
+    <string name="about_author_comment">// 开发者</string>
+    <string name="about_contact_value">QQ(1284321744)\n群(1014171868)</string>
+    <string name="about_contact_comment">// 联系方式</string>
+    <string name="about_repo_value">git clone .../r2droid</string>
+    <string name="about_repo_comment">// 源代码</string>
+    <string name="about_core_value">radare2 @ 6.0.8</string>
+    <string name="about_core_comment">// 核心引擎</string>
+    <string name="about_footer">Build with ❤️ &amp; Kotlin</string>
+    <string name="about_logo_desc">应用图标</string>
+    <string name="about_r2droid">R2Droid</string>
+    <string name="about_motto">&gt; 基于R2的安卓逆向工具</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_default_value">默认</string>
+    <string name="settings_customized_value">已应用自定义修改</string>
+    <string name="settings_language_system">系统默认</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_chinese">中文</string>
+    <string name="settings_cancel">取消</string>
+    <string name="settings_save">保存</string>
+    <string name="settings_content_label">内容</string>
+
+    <!-- Install Screen -->
+    <string name="install_title">正在安装资源</string>
+
+    <!-- Terminal Screen -->
+    <string name="terminal_output_label">终端输出</string>
+    <string name="terminal_input_hint">输入 r2 命令...</string>
+    <string name="terminal_execute_desc">执行</string>
+
+    <!-- Project Analysis -->
+    <string name="analysis_analyzing">正在分析...</string>
+
+    <!-- Project Components -->
+    <string name="menu_copy">复制</string>
+    <string name="menu_copy_submenu">复制...</string>
+    <string name="menu_jump">跳转</string>
+    <string name="menu_xrefs">交叉引用</string>
+    <string name="menu_back">返回</string>
+    <string name="menu_name">名称</string>
+    <string name="menu_address">地址</string>
+    <string name="copy_address">地址</string>
+    <string name="menu_all">全部</string>
+    <string name="menu_hex_viewer">十六进制视图</string>
+    <string name="menu_disassembly">反汇编视图</string>
+    <string name="menu_custom_command">自定义命令...</string>
+    <string name="menu_modify_submenu">修改...</string>
+    <string name="menu_opcodes">机器码</string>
+    <string name="menu_bytes">字节码</string>
+    <string name="menu_full_row">完整行</string>
+
+    <string name="binary_overview_title">二进制概览</string>
+    <string name="binary_arch">架构</string>
+    <string name="binary_bits">位数</string>
+    <string name="binary_os">系统</string>
+    <string name="binary_type">类型</string>
+    <string name="binary_machine">机器</string>
+    <string name="binary_language">语言</string>
+    <string name="binary_compiled">编译时间</string>
+    <string name="binary_subsystem">子系统</string>
+
+    <string name="search_sections_hint">搜索段...</string>
+    <string name="search_symbols_hint">搜索符号...</string>
+    <string name="search_imports_hint">搜索导入...</string>
+    <string name="search_relocations_hint">搜索重定位...</string>
+    <string name="search_strings_hint">搜索字符串...</string>
+    <string name="search_functions_hint">搜索函数...</string>
+
+    <string name="xrefs_title">交叉引用</string>
+    <string name="xrefs_no_found">未找到交叉引用。</string>
+    <string name="xrefs_refs_from">引用自 →</string>
+    <string name="xrefs_refs_to">← 被引用</string>
+    <string name="xrefs_no_outgoing">无外部引用</string>
+    <string name="xrefs_no_incoming">无内部引用</string>
+    <string name="xrefs_close">关闭</string>
+
+    <!-- Hex Viewer -->
+    <string name="hex_no_data">无数据</string>
+    <string name="hex_loading_xrefs">正在加载交叉引用...</string>
+    <string name="hex_modify_hex">修改十六进制 (wx)</string>
+    <string name="hex_modify_string">修改字符串 (w)</string>
+    <string name="hex_modify_opcode">修改指令 (wa)</string>
+    <string name="hex_modify_default">修改</string>
+    <string name="hex_toggle_keyboard_desc">切换键盘</string>
+    <!-- Common -->
+    <string name="common_search">搜索...</string>
+    <string name="common_refresh">刷新</string>
+    <string name="common_clear">清除</string>
+    <string name="common_error">错误</string>
+    <string name="common_retry">重试</string>
+    <string name="common_idle">空闲</string>
+    <string name="common_yes">是</string>
+    <string name="common_no">否</string>
+
+    <!-- Project Screen -->
+    <string name="proj_category_list">列表</string>
+    <string name="proj_category_detail">详情</string>
+    <string name="proj_category_project">项目</string>
+    
+    <string name="proj_tab_overview">总览</string>
+    <string name="proj_tab_sections">段</string>
+    <string name="proj_tab_symbols">符号</string>
+    <string name="proj_tab_imports">导入</string>
+    <string name="proj_tab_relocs">重定位</string>
+    <string name="proj_tab_strings">字符串</string>
+    <string name="proj_tab_functions">函数</string>
+    
+    <string name="proj_tab_hex">十六进制</string>
+    <string name="proj_tab_disassembly">反汇编</string>
+    <string name="proj_tab_decompile">反编译</string>
+    
+    <string name="proj_tab_settings">设置</string>
+    <string name="proj_tab_cmd">命令</string>
+    <string name="proj_tab_logs">日志</string>
+
+    <string name="proj_nav_go_back">后退</string>
+    <string name="proj_nav_scroll_to_selection">滚动到选中位置</string>
+    
+    <string name="proj_info_current_file">当前文件</string>
+    <string name="proj_info_no_file">未加载文件</string>
+    <string name="proj_info_project_id">项目 ID: %1$s</string>
+    
+    <string name="proj_save_update_title">更新项目</string>
+    <string name="proj_save_update_desc">保存更改到现有项目</string>
+    <string name="proj_save_new_desc">保存分析结果以便稍后查看</string>
+    
+    <string name="proj_term_desc">打开带有 radare2 环境的终端</string>
+    
+    <string name="proj_session_info">会话信息</string>
+    <string name="proj_session_status">状态</string>
+    <string name="proj_session_connected">已连接</string>
+    <string name="proj_session_disconnected">未连接</string>
+    <string name="proj_session_saved">已保存</string>
+
+    <!-- Debug Screen -->
+    <string name="debug_command_label">R2 Command</string>
+    <string name="debug_command_placeholder">例如: afl, pdf @ main, i</string>
+    <string name="debug_execute_btn">执行</string>
+    <string name="debug_executing_btn">执行中...</string>
+    <string name="debug_result_label">执行结果 (JSON):</string>
+    <string name="debug_result_placeholder">命令执行结果将显示在这里...</string>
+    <!-- Analysis Config Screen -->
+    <string name="analysis_config_title">配置分析</string>
+    <string name="analysis_target_file">目标文件</string>
+    <string name="analysis_level_title">分析级别</string>
+    <string name="analysis_level_none">无</string>
+    <string name="analysis_level_auto">自动 (aaa)</string>
+    <string name="analysis_level_experimental">实验性 (aaaa)</string>
+    <string name="analysis_level_custom">自定义</string>
+    <string name="analysis_custom_cmd_label">自定义分析命令</string>
+    <string name="analysis_custom_cmd_hint">例如: aa</string>
+    <string name="analysis_startup_options">启动选项</string>
+    <string name="analysis_writable_mode">以可写模式打开 (-w)</string>
+    <string name="analysis_startup_flags_label">附加启动参数</string>
+    <string name="analysis_startup_flags_hint">-n -h</string>
+    <string name="analysis_start_btn">开始分析</string>
+    
+    <!-- Logs -->
+    <string name="logs_clear_desc">清除日志</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_jump_title">跳转到地址</string>
+    <string name="dialog_jump_address_label">地址 (Hex)</string>
+    <string name="dialog_jump_address_hint">例如: 0x401000</string>
+    <string name="dialog_jump_error_empty">地址不能为空</string>
+    <string name="dialog_jump_error_invalid">无效的十六进制地址</string>
+    <string name="dialog_jump_go">跳转</string>
+    <string name="dialog_cancel">取消</string>
+
+    <string name="dialog_save_update_option">更新现有项目</string>
+    <string name="dialog_save_new_option">保存为新项目</string>
+    <!-- Settings New -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_font">自定义字体</string>
+    <string name="settings_font_desc">选择自定义字体文件 (.ttf)</string>
+    <string name="settings_font_default">默认</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_desc">应用语言</string>
+    <string name="settings_general">常规</string>
+    <string name="settings_r2rc">自定义 .radare2rc</string>
+    <string name="settings_r2rc_desc">选择自定义 r2 配置文件</string>
+    <string name="settings_project_dir">项目文件夹</string>
+    <string name="settings_project_dir_desc">项目保存位置</string>
+    <string name="settings_dir_picker_title">选择目录</string>
+    <string name="settings_file_picker_title">选择文件</string>
+    <string name="settings_reset">重置</string>
+
+    <!-- Home New -->
+    <string name="home_saved_projects">已保存的项目</string>
+    <string name="home_no_saved_projects">无已保存项目</string>
+    <string name="home_error_binary_not_found">未找到二进制文件</string>
+    <string name="home_error_script_not_found">未找到项目脚本</string>
+    <string name="home_restore_project">恢复项目</string>
+    <string name="home_delete_project">删除项目</string>
+    <string name="home_delete_project_title">删除项目？</string>
+    <string name="home_delete_project_message">您确定要删除“%1$s”吗？这将删除已保存的分析数据，但不会删除原始二进制文件。</string>
+    <string name="home_delete_confirm">删除</string>
+    <string name="home_delete_cancel">取消</string>
+    <string name="home_project_deleted">项目已删除</string>
+    <string name="home_binary_not_accessible">无法访问二进制文件</string>
+
 </resources>

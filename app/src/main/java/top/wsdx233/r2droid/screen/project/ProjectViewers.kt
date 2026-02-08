@@ -1,5 +1,7 @@
 package top.wsdx233.r2droid.screen.project
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -102,7 +104,7 @@ fun HexViewer(
     val totalRows = hexDataManager.totalRows
     if (totalRows <= 0) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No Data", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.hex_no_data), style = MaterialTheme.typography.bodyLarge)
         }
         return
     }
@@ -205,10 +207,10 @@ fun HexViewer(
         // Modify Dialog
         if (showModifyDialog && menuTargetAddress != null) {
             val title = when(modifyType) {
-                "hex" -> "Modify Hex (wx)"
-                "string" -> "Modify String (w)"
-                "asm" -> "Modify Opcode (wa)"
-                else -> "Modify"
+                "hex" -> stringResource(R.string.hex_modify_hex)
+                "string" -> stringResource(R.string.hex_modify_string)
+                "asm" -> stringResource(R.string.hex_modify_opcode)
+                else -> stringResource(R.string.hex_modify_default)
             }
             ModifyDialog(
                 title = title,
@@ -555,7 +557,7 @@ fun HexViewer(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Keyboard,
-                        contentDescription = "Toggle Keyboard",
+                        contentDescription = stringResource(R.string.hex_toggle_keyboard_desc),
                         tint = if (showKeyboard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1915,7 +1917,7 @@ fun DisasmContextMenu(
                     
                     // Copy Submenu Trigger
                     DropdownMenuItem(
-                        text = { Text("Copy...") },
+                        text = { Text(stringResource(R.string.menu_copy_submenu)) },
                         onClick = { currentMenu = "copy" },
                         trailingIcon = { 
                             Icon(
@@ -1927,7 +1929,7 @@ fun DisasmContextMenu(
                     
                     // Modify Submenu Trigger
                     DropdownMenuItem(
-                        text = { Text("Modify...") },
+                        text = { Text(stringResource(R.string.menu_modify_submenu)) },
                         onClick = { currentMenu = "modify" },
                         trailingIcon = { 
                             Icon(
@@ -1941,13 +1943,13 @@ fun DisasmContextMenu(
                     
                     // Xrefs
                     DropdownMenuItem(
-                        text = { Text("Xrefs") },
+                        text = { Text(stringResource(R.string.menu_xrefs)) },
                         onClick = { onXrefs() }
                     )
                     
                     // Custom Command
                     DropdownMenuItem(
-                        text = { Text("Custom Command...") },
+                        text = { Text(stringResource(R.string.menu_custom_command)) },
                         onClick = { onCustomCommand() }
                     )
                 }
@@ -1967,21 +1969,21 @@ fun DisasmContextMenu(
                     HorizontalDivider()
                     
                     DropdownMenuItem(
-                        text = { Text("Address") },
+                        text = { Text(stringResource(R.string.copy_address)) },
                         onClick = { onCopy("0x%08x".format(address)) }
                     )
                     
                     if (instr != null) {
                         DropdownMenuItem(
-                            text = { Text("Opcode") },
+                            text = { Text(stringResource(R.string.menu_opcodes)) },
                             onClick = { onCopy(instr.disasm) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Bytes") },
+                            text = { Text(stringResource(R.string.menu_bytes)) },
                             onClick = { onCopy(instr.bytes) }
                         )
                         DropdownMenuItem(
-                            text = { Text("Full Row") },
+                            text = { Text(stringResource(R.string.menu_full_row)) },
                             onClick = { 
                                 val bytesStr = if (instr.bytes.length > 12) instr.bytes.take(12) + ".." else instr.bytes
                                 onCopy("0x%08x  %s  %s".format(address, bytesStr.padEnd(14), instr.disasm)) 
@@ -1993,7 +1995,7 @@ fun DisasmContextMenu(
                 "modify" -> {
                     // === Modify Submenu ===
                     DropdownMenuItem(
-                        text = { Text("Back") },
+                        text = { Text(stringResource(R.string.menu_back)) },
                         onClick = { currentMenu = "main" },
                         leadingIcon = { 
                             Icon(
@@ -2005,15 +2007,15 @@ fun DisasmContextMenu(
                     HorizontalDivider()
                     
                     DropdownMenuItem(
-                        text = { Text("Modify Hex") },
+                        text = { Text(stringResource(R.string.hex_modify_hex)) },
                         onClick = { onModify("hex") }
                     )
                     DropdownMenuItem(
-                        text = { Text("Modify String") },
+                        text = { Text(stringResource(R.string.hex_modify_string)) },
                         onClick = { onModify("string") }
                     )
                     DropdownMenuItem(
-                        text = { Text("Modify Opcode") },
+                        text = { Text(stringResource(R.string.hex_modify_opcode)) },
                         onClick = { onModify("asm") }
                     )
                 }
@@ -2158,54 +2160,54 @@ fun HexContextMenu(
             when (currentMenu) {
                 "main" -> {
                     DropdownMenuItem(
-                        text = { Text("Copy...") },
+                        text = { Text(stringResource(R.string.menu_copy_submenu)) },
                         onClick = { currentMenu = "copy" },
                         trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Submenu") }
                     )
                     DropdownMenuItem(
-                        text = { Text("Modify...") },
+                        text = { Text(stringResource(R.string.menu_modify_submenu)) },
                         onClick = { currentMenu = "modify" },
                         trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Submenu") }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text("Xrefs") },
+                        text = { Text(stringResource(R.string.menu_xrefs)) },
                         onClick = { onXrefs() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Custom Command...") },
+                        text = { Text(stringResource(R.string.menu_custom_command)) },
                         onClick = { onCustomCommand() }
                     )
                 }
                 "copy" -> {
                     DropdownMenuItem(
-                        text = { Text("Back") },
+                        text = { Text(stringResource(R.string.menu_back)) },
                         onClick = { currentMenu = "main" },
                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text("Address") },
+                        text = { Text(stringResource(R.string.copy_address)) },
                         onClick = { onCopy("0x%08x".format(address)) }
                     )
                 }
                 "modify" -> {
                     DropdownMenuItem(
-                        text = { Text("Back") },
+                        text = { Text(stringResource(R.string.menu_back)) },
                         onClick = { currentMenu = "main" },
                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
-                        text = { Text("Modify Hex") },
+                        text = { Text(stringResource(R.string.hex_modify_hex)) },
                         onClick = { onModify("hex") }
                     )
                     DropdownMenuItem(
-                        text = { Text("Modify String") },
+                        text = { Text(stringResource(R.string.hex_modify_string)) },
                         onClick = { onModify("string") }
                     )
                     DropdownMenuItem(
-                        text = { Text("Modify Opcode") },
+                        text = { Text(stringResource(R.string.hex_modify_opcode)) },
                         onClick = { onModify("asm") }
                     )
                 }

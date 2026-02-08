@@ -1,10 +1,12 @@
 package top.wsdx233.r2droid.screen.install
 
+import top.wsdx233.r2droid.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import top.wsdx233.r2droid.util.InstallState
@@ -24,7 +26,7 @@ fun InstallScreen(installState: InstallState) {
         ) {
             // 标题
             Text(
-                text = "正在安装资源",
+                text = stringResource(R.string.install_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

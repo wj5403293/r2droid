@@ -1,5 +1,8 @@
 package top.wsdx233.r2droid.screen.debug
 
+import androidx.compose.ui.res.stringResource
+import top.wsdx233.r2droid.R
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -33,8 +36,8 @@ fun DebugScreen(
         OutlinedTextField(
             value = commandInput,
             onValueChange = { viewModel.updateCommandInput(it) },
-            label = { Text("R2 Command") },
-            placeholder = { Text("例如: afl, pdf @ main, i") },
+            label = { Text(stringResource(R.string.debug_command_label)) },
+            placeholder = { Text(stringResource(R.string.debug_command_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isExecuting,
             singleLine = true
@@ -50,17 +53,17 @@ fun DebugScreen(
         ) {
             Icon(
                 imageVector = Icons.Filled.PlayArrow,
-                contentDescription = "Execute"
+                contentDescription = stringResource(R.string.debug_execute_btn)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(if (isExecuting) "执行中..." else "执行命令")
+            Text(if (isExecuting) stringResource(R.string.debug_executing_btn) else stringResource(R.string.debug_execute_btn))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // 结果显示区域标题
         Text(
-            text = "执行结果 (JSON):",
+            text = stringResource(R.string.debug_result_label),
             style = MaterialTheme.typography.titleMedium
         )
 
@@ -78,7 +81,7 @@ fun DebugScreen(
             SelectionContainer {
                 val scrollState = rememberScrollState()
                 Text(
-                    text = outputText.ifEmpty { "命令执行结果将显示在这里..." },
+                    text = outputText.ifEmpty { stringResource(R.string.debug_result_placeholder) },
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(scrollState)

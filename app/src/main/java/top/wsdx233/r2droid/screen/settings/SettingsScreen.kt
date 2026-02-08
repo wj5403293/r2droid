@@ -128,7 +128,7 @@ fun SettingsScreen(
             item {
                 SettingsItem(
                     title = stringResource(R.string.settings_r2rc),
-                    subtitle = if (r2rcContent.isBlank()) "Default" else "Customized",
+                    subtitle = if (r2rcContent.isBlank()) stringResource(R.string.settings_default_value) else stringResource(R.string.settings_customized_value),
                     icon = Icons.Default.Settings,
                     onClick = { 
                         tempR2rcContent = r2rcContent
@@ -162,8 +162,8 @@ fun SettingsScreen(
             
             item {
                 val languageLabel = when(language) {
-                    "en" -> "English"
-                    "zh" -> "中文"
+                    "en" -> stringResource(R.string.settings_language_english)
+                    "zh" -> stringResource(R.string.settings_language_chinese)
                     else -> stringResource(R.string.settings_font_default) // "Default" (System)
                 }
                 SettingsItem(
@@ -184,7 +184,7 @@ fun SettingsScreen(
                 OutlinedTextField(
                     value = tempR2rcContent,
                     onValueChange = { tempR2rcContent = it },
-                    label = { Text("Content") },
+                    label = { Text(stringResource(R.string.settings_content_label)) },
                     modifier = Modifier.fillMaxWidth().height(300.dp),
                     maxLines = 20
                 )
@@ -194,12 +194,12 @@ fun SettingsScreen(
                     viewModel.saveR2rcContent(context, tempR2rcContent)
                     showR2rcDialog = false 
                 }) {
-                    Text("Save")
+                    Text(stringResource(R.string.settings_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showR2rcDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.settings_cancel))
                 }
             }
         )
@@ -211,14 +211,14 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.settings_language)) },
             text = {
                 Column {
-                    LanguageOption("System Default", "system", language) { viewModel.setLanguage(it); showLanguageDialog = false }
-                    LanguageOption("English", "en", language) { viewModel.setLanguage(it); showLanguageDialog = false }
-                    LanguageOption("中文", "zh", language) { viewModel.setLanguage(it); showLanguageDialog = false }
+                    LanguageOption(stringResource(R.string.settings_language_system), "system", language) { viewModel.setLanguage(it); showLanguageDialog = false }
+                    LanguageOption(stringResource(R.string.settings_language_english), "en", language) { viewModel.setLanguage(it); showLanguageDialog = false }
+                    LanguageOption(stringResource(R.string.settings_language_chinese), "zh", language) { viewModel.setLanguage(it); showLanguageDialog = false }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.settings_cancel))
                 }
             }
         )

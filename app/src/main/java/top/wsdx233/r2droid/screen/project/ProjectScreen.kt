@@ -1,5 +1,7 @@
 package top.wsdx233.r2droid.screen.project
 
+import androidx.annotation.StringRes
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,13 +71,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.termux.view.R
+import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.util.R2PipeManager
 
-enum class MainCategory(val title: String, val icon: ImageVector) {
-    List("列表", Icons.Filled.List),
-    Detail("详情", Icons.Filled.Info),
-    Project("项目", Icons.Filled.Build)
+enum class MainCategory(@StringRes val titleRes: Int, val icon: ImageVector) {
+    List(R.string.proj_category_list, Icons.Filled.List),
+    Detail(R.string.proj_category_detail, Icons.Filled.Info),
+    Project(R.string.proj_category_project, Icons.Filled.Build)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -229,9 +231,12 @@ fun ProjectScreen(
     var selectedProjectTabIndex by remember { mutableIntStateOf(0) } // Default to Settings (index 0)
     var showJumpDialog by remember { mutableStateOf(false) }
 
-    val listTabs = listOf("Overview", "Sections", "Symbols", "Imports", "Relocs", "Strings", "Functions")
-    val detailTabs = listOf("Hex", "Disassembly", "Decompile")
-    val projectTabs = listOf("Settings", "Cmd", "Logs")
+    val listTabs = listOf(
+        R.string.proj_tab_overview, R.string.proj_tab_sections, R.string.proj_tab_symbols,
+        R.string.proj_tab_imports, R.string.proj_tab_relocs, R.string.proj_tab_strings, R.string.proj_tab_functions
+    )
+    val detailTabs = listOf(R.string.proj_tab_hex, R.string.proj_tab_disassembly, R.string.proj_tab_decompile)
+    val projectTabs = listOf(R.string.proj_tab_settings, R.string.proj_tab_cmd, R.string.proj_tab_logs)
     
     // Xrefs State
     val xrefsState by viewModel.xrefsState.collectAsState()
@@ -274,7 +279,7 @@ fun ProjectScreen(
                          ) {
                              Icon(
                                  Icons.AutoMirrored.Filled.ArrowBack,
-                                 contentDescription = "Go Back",
+                                 contentDescription = stringResource(R.string.proj_nav_go_back),
                                  tint = if (canGoBack) MaterialTheme.colorScheme.onSurface 
                                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                              )
@@ -282,11 +287,11 @@ fun ProjectScreen(
                          // Show scroll-to-selection button for Hex and Disassembly tabs
                          if (selectedDetailTabIndex == 0 || selectedDetailTabIndex == 1 || selectedDetailTabIndex == 2) {
                              androidx.compose.material3.IconButton(onClick = { viewModel.requestScrollToSelection() }) {
-                                 Icon(Icons.Filled.MyLocation, contentDescription = "Scroll to Selection")
+                                 Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.proj_nav_scroll_to_selection))
                              }
                          }
                          androidx.compose.material3.IconButton(onClick = { showJumpDialog = true }) {
-                             Icon(Icons.AutoMirrored.Filled.MenuOpen, contentDescription = "Jump")
+                             Icon(Icons.AutoMirrored.Filled.MenuOpen, contentDescription = stringResource(R.string.menu_jump))
                          }
                     }
                 }
@@ -345,7 +350,7 @@ fun ProjectScreen(
                                     Tab(
                                         selected = selectedListTabIndex == index,
                                         onClick = { selectedListTabIndex = index },
-                                        text = { Text(text = title) }
+                                        text = { Text(text = stringResource(title)) }
                                     )
                                 }
                             }
@@ -366,7 +371,7 @@ fun ProjectScreen(
                                     Tab(
                                         selected = selectedDetailTabIndex == index,
                                         onClick = { selectedDetailTabIndex = index },
-                                        text = { Text(text = title) }
+                                        text = { Text(text = stringResource(title)) }
                                     )
                                 }
                             }
@@ -387,7 +392,7 @@ fun ProjectScreen(
                                     Tab(
                                         selected = selectedProjectTabIndex == index,
                                         onClick = { selectedProjectTabIndex = index },
-                                        text = { Text(text = title) }
+                                        text = { Text(text = stringResource(title)) }
                                     )
                                 }
                             }
@@ -402,8 +407,8 @@ fun ProjectScreen(
                             NavigationBarItem(
                                 selected = selectedCategory == category,
                                 onClick = { selectedCategory = category },
-                                icon = { Icon(category.icon, contentDescription = category.title) },
-                                label = { Text(category.title) }
+                                icon = { Icon(category.icon, contentDescription = stringResource(category.titleRes)) },
+                                label = { Text(stringResource(category.titleRes)) }
                             )
                         }
                     }
@@ -414,7 +419,7 @@ fun ProjectScreen(
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             when (val state = uiState) {
                 is ProjectUiState.Idle -> {
-                    Text("Idle", Modifier.align(Alignment.Center))
+                    Text(stringResource(R.string.common_idle), Modifier.align(Alignment.Center))
                 }
                 is ProjectUiState.Loading -> {
                      CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -427,7 +432,7 @@ fun ProjectScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Error",
+                            text = stringResource(R.string.common_error),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -438,7 +443,7 @@ fun ProjectScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Button(onClick = { viewModel.retryLoadAll() }) {
-                            Text("Retry")
+                            Text(stringResource(R.string.common_retry))
                         }
                     }
                 }
@@ -460,7 +465,7 @@ fun ProjectScreen(
                             }
 
                             when (selectedListTabIndex) {
-                                0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
+                                0 -> state.binInfo?.let { OverviewCard(it) } ?: Text(stringResource(R.string.hex_no_data), Modifier.align(Alignment.Center))
                                 1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions, onRefresh = { viewModel.loadSections(forceRefresh = true) })
                                 2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions, onRefresh = { viewModel.loadSymbols(forceRefresh = true) })
                                 3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions, onRefresh = { viewModel.loadImports(forceRefresh = true) })
@@ -595,12 +600,12 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Current File",
+                    text = stringResource(R.string.proj_info_current_file),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = R2PipeManager.currentFilePath ?: "No file loaded",
+                    text = R2PipeManager.currentFilePath ?: stringResource(R.string.proj_info_no_file),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -608,7 +613,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 if (R2PipeManager.currentProjectId != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Project ID: ${R2PipeManager.currentProjectId}",
+                        text = stringResource(R.string.proj_info_project_id, R2PipeManager.currentProjectId ?: ""),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
                     )
@@ -655,7 +660,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (R2PipeManager.currentProjectId != null) 
-                            "Update Project" 
+                            stringResource(R.string.proj_save_update_title) 
                         else 
                             stringResource(top.wsdx233.r2droid.R.string.project_save_title),
                         style = MaterialTheme.typography.titleSmall,
@@ -663,9 +668,9 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     )
                     Text(
                         text = if (R2PipeManager.currentProjectId != null)
-                            "Save changes to existing project"
+                            stringResource(R.string.proj_save_update_desc)
                         else
-                            "Save analysis results for later",
+                            stringResource(R.string.proj_save_new_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
@@ -736,7 +741,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
                     Text(
-                        text = "Open shell terminal with radare2 environment",
+                        text = stringResource(R.string.proj_term_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f)
                     )
@@ -747,7 +752,7 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
         // Session Info
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Session Info",
+            text = stringResource(R.string.proj_session_info),
             style = MaterialTheme.typography.titleMedium
         )
         
@@ -765,9 +770,9 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Status", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.proj_session_status), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        if (R2PipeManager.isConnected) "Connected" else "Disconnected",
+                        if (R2PipeManager.isConnected) stringResource(R.string.proj_session_connected) else stringResource(R.string.proj_session_disconnected),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (R2PipeManager.isConnected) 
                             MaterialTheme.colorScheme.primary 
@@ -779,9 +784,9 @@ fun ProjectSettingsScreen(viewModel: ProjectViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Saved", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.proj_session_saved), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        if (R2PipeManager.currentProjectId != null) "Yes" else "No",
+                        if (R2PipeManager.currentProjectId != null) stringResource(R.string.common_yes) else stringResource(R.string.common_no),
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (R2PipeManager.currentProjectId != null) 
                             MaterialTheme.colorScheme.primary 
@@ -823,7 +828,7 @@ fun SaveProjectDialog(
                             onClick = { saveAsNew = false }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Update existing project")
+                        Text(stringResource(R.string.dialog_save_update_option))
                     }
                     
                     Row(
@@ -838,7 +843,7 @@ fun SaveProjectDialog(
                             onClick = { saveAsNew = true }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Save as new project")
+                        Text(stringResource(R.string.dialog_save_new_option))
                     }
                 }
                 
@@ -902,15 +907,15 @@ fun AnalysisConfigScreen(
     var customFlags by remember { mutableStateOf("") }
     
     val levels = listOf(
-        "None" to "none",
-        "Auto (aaa)" to "aaa",
-        "Experimental (aaaa)" to "aaaa",
-        "Custom" to "custom"
+        stringResource(R.string.analysis_level_none) to "none",
+        stringResource(R.string.analysis_level_auto) to "aaa",
+        stringResource(R.string.analysis_level_experimental) to "aaaa",
+        stringResource(R.string.analysis_level_custom) to "custom"
     )
 
     Scaffold(
         topBar = {
-             CenterAlignedTopAppBar(title = { Text("Configure Analysis") })
+             CenterAlignedTopAppBar(title = { Text(stringResource(R.string.analysis_config_title)) })
         }
     ) { padding ->
         Column(
@@ -924,13 +929,13 @@ fun AnalysisConfigScreen(
             // File Info
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.padding(16.dp).fillMaxWidth()) {
-                    Text("Target File", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.analysis_target_file), style = MaterialTheme.typography.labelMedium)
                     Text(filePath, style = MaterialTheme.typography.bodyMedium)
                 }
             }
             
             // Analysis Level
-            Text("Analysis Level", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.analysis_level_title), style = MaterialTheme.typography.titleMedium)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 levels.forEach { (label, value) ->
                     Row(
@@ -954,8 +959,8 @@ fun AnalysisConfigScreen(
                 OutlinedTextField(
                     value = customCmd,
                     onValueChange = { customCmd = it },
-                    label = { Text("Custom Analysis Command") },
-                    placeholder = { Text("e.g. aa") },
+                    label = { Text(stringResource(R.string.analysis_custom_cmd_label)) },
+                    placeholder = { Text(stringResource(R.string.analysis_custom_cmd_hint)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -963,18 +968,18 @@ fun AnalysisConfigScreen(
             HorizontalDivider()
             
             // Startup Options
-            Text("Startup Options", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.analysis_startup_options), style = MaterialTheme.typography.titleMedium)
             
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { isWritable = !isWritable }) {
                 Checkbox(checked = isWritable, onCheckedChange = { isWritable = it })
-                Text("Open in Writable Mode (-w)")
+                Text(stringResource(R.string.analysis_writable_mode))
             }
             
             OutlinedTextField(
                 value = customFlags,
                 onValueChange = { customFlags = it },
-                label = { Text("Additional Startup Flags") },
-                placeholder = { Text("-n -h") },
+                label = { Text(stringResource(R.string.analysis_startup_flags_label)) },
+                placeholder = { Text(stringResource(R.string.analysis_startup_flags_hint)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -990,7 +995,7 @@ fun AnalysisConfigScreen(
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Start Analysis")
+                Text(stringResource(R.string.analysis_start_btn))
             }
         }
     }
@@ -1031,7 +1036,7 @@ fun LogList(logs: List<top.wsdx233.r2droid.util.LogEntry>, onClearLogs: () -> Un
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Clear Logs",
+                    contentDescription = stringResource(R.string.logs_clear_desc),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
@@ -1079,10 +1084,18 @@ fun JumpDialog(
 ) {
     var text by remember { mutableStateOf(initialAddress) }
     var error by remember { mutableStateOf<String?>(null) }
+    
+    val title = stringResource(R.string.dialog_jump_title)
+    val addressLabel = stringResource(R.string.dialog_jump_address_label)
+    val addressHint = stringResource(R.string.dialog_jump_address_hint)
+    val errorEmpty = stringResource(R.string.dialog_jump_error_empty)
+    val errorInvalid = stringResource(R.string.dialog_jump_error_invalid)
+    val goLabel = stringResource(R.string.dialog_jump_go)
+    val cancelLabel = stringResource(R.string.dialog_cancel)
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Jump to Address") },
+        title = { Text(title) },
         text = {
             Column {
                 OutlinedTextField(
@@ -1091,8 +1104,8 @@ fun JumpDialog(
                         text = it 
                         error = null
                     },
-                    label = { Text("Address (Hex)") },
-                    placeholder = { Text("e.g. 0x401000") },
+                    label = { Text(addressLabel) },
+                    placeholder = { Text(addressHint) },
                     isError = error != null,
                     singleLine = true
                 )
@@ -1111,7 +1124,7 @@ fun JumpDialog(
                 onClick = {
                     val addrStr = text.removePrefix("0x").trim()
                     if (addrStr.isBlank()) {
-                        error = "Address cannot be empty"
+                        error = errorEmpty
                         return@TextButton
                     }
                     try {
@@ -1119,16 +1132,16 @@ fun JumpDialog(
                         onJump(addr)
                         onDismiss()
                     } catch (e: NumberFormatException) {
-                         error = "Invalid hex address"
+                         error = errorInvalid
                     }
                 }
             ) {
-                Text("Go")
+                Text(goLabel)
             }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(cancelLabel)
             }
         }
     )
