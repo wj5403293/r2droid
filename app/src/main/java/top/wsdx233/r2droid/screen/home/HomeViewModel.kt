@@ -19,6 +19,7 @@ import java.io.FileOutputStream
 
 sealed class HomeUiEvent {
     data object NavigateToProject : HomeUiEvent()
+    data object NavigateToAbout : HomeUiEvent()
     data class ShowError(val message: String) : HomeUiEvent()
     data class ShowMessage(val message: String) : HomeUiEvent()
 }
@@ -197,6 +198,8 @@ class HomeViewModel : ViewModel() {
     }
 
     fun onAboutClicked() {
-        // Placeholder
+        viewModelScope.launch {
+            _uiEvent.send(HomeUiEvent.NavigateToAbout)
+        }
     }
 }

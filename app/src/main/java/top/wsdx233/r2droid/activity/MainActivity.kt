@@ -18,6 +18,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import top.wsdx233.r2droid.screen.about.AboutScreen
 import top.wsdx233.r2droid.screen.home.HomeScreen
 import top.wsdx233.r2droid.screen.install.InstallScreen
 import top.wsdx233.r2droid.screen.permission.PermissionScreen
@@ -53,7 +54,8 @@ class MainActivity : ComponentActivity() {
 
 enum class AppScreen {
     Home,
-    Project
+    Project,
+    About
 }
 
 @Composable
@@ -93,7 +95,16 @@ fun MainAppNavigation() {
     when (currentScreen) {
         AppScreen.Home -> {
             HomeScreen(
-                onNavigateToProject = { currentScreen = AppScreen.Project }
+                onNavigateToProject = { currentScreen = AppScreen.Project },
+                onNavigateToAbout = { currentScreen = AppScreen.About }
+            )
+        }
+        AppScreen.About -> {
+            BackHandler {
+                currentScreen = AppScreen.Home
+            }
+            AboutScreen(
+                onBackClick = { currentScreen = AppScreen.Home }
             )
         }
         AppScreen.Project -> {
