@@ -293,9 +293,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadSections() {
+    fun loadSections(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.sections != null) return
+        if (!forceRefresh && current.sections != null) return
         
         viewModelScope.launch {
             val result = repository.getSections()
@@ -307,9 +307,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadSymbols() {
+    fun loadSymbols(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.symbols != null) return
+        if (!forceRefresh && current.symbols != null) return
 
         viewModelScope.launch {
             val result = repository.getSymbols()
@@ -320,9 +320,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadImports() {
+    fun loadImports(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.imports != null) return
+        if (!forceRefresh && current.imports != null) return
 
         viewModelScope.launch {
             val result = repository.getImports()
@@ -333,9 +333,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadRelocations() {
+    fun loadRelocations(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.relocations != null) return
+        if (!forceRefresh && current.relocations != null) return
 
         viewModelScope.launch {
             val result = repository.getRelocations()
@@ -346,9 +346,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadStrings() {
+    fun loadStrings(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.strings != null) return
+        if (!forceRefresh && current.strings != null) return
 
         viewModelScope.launch {
             val result = repository.getStrings()
@@ -359,9 +359,9 @@ class ProjectViewModel : ViewModel() {
         }
     }
 
-    fun loadFunctions() {
+    fun loadFunctions(forceRefresh: Boolean = false) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
-        if (current.functions != null) return
+        if (!forceRefresh && current.functions != null) return
 
         viewModelScope.launch {
             val result = repository.getFunctions()

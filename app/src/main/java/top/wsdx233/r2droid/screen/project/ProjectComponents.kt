@@ -217,11 +217,12 @@ fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-fun SectionList(sections: List<Section>, actions: ListItemActions) {
+fun SectionList(sections: List<Section>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = sections,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Sections..."
+        placeholder = "Search Sections...",
+        onRefresh = onRefresh
     ) { section ->
         SectionItem(section, actions)
     }
@@ -277,11 +278,12 @@ fun SectionItem(section: Section, actions: ListItemActions) {
 }
 
 @Composable
-fun SymbolList(symbols: List<Symbol>, actions: ListItemActions) {
+fun SymbolList(symbols: List<Symbol>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = symbols,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Symbols..."
+        placeholder = "Search Symbols...",
+        onRefresh = onRefresh
     ) { symbol ->
         SymbolItem(symbol, actions)
     }
@@ -327,11 +329,12 @@ fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
 }
 
 @Composable
-fun ImportList(imports: List<ImportInfo>, actions: ListItemActions) {
+fun ImportList(imports: List<ImportInfo>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = imports,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Imports..."
+        placeholder = "Search Imports...",
+        onRefresh = onRefresh
     ) { item ->
         ImportItem(item, actions)
     }
@@ -376,11 +379,12 @@ fun ImportItem(importInfo: ImportInfo, actions: ListItemActions) {
 }
 
 @Composable
-fun RelocationList(relocations: List<Relocation>, actions: ListItemActions) {
+fun RelocationList(relocations: List<Relocation>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = relocations,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Relocations..."
+        placeholder = "Search Relocations...",
+        onRefresh = onRefresh
     ) { relocation ->
         RelocationItem(relocation, actions)
     }
@@ -410,11 +414,12 @@ fun RelocationItem(relocation: Relocation, actions: ListItemActions) {
 }
 
 @Composable
-fun StringList(strings: List<StringInfo>, actions: ListItemActions) {
+fun StringList(strings: List<StringInfo>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = strings,
         filterPredicate = { item, query -> item.string.contains(query, ignoreCase = true) },
-        placeholder = "Search Strings..."
+        placeholder = "Search Strings...",
+        onRefresh = onRefresh
     ) { str ->
         StringItem(str, actions)
     }
@@ -462,11 +467,12 @@ fun StringItem(stringInfo: StringInfo, actions: ListItemActions) {
 }
 
 @Composable
-fun FunctionList(functions: List<FunctionInfo>, actions: ListItemActions) {
+fun FunctionList(functions: List<FunctionInfo>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
     FilterableList(
         items = functions,
         filterPredicate = { item, query -> item.name.contains(query, ignoreCase = true) },
-        placeholder = "Search Functions..."
+        placeholder = "Search Functions...",
+        onRefresh = onRefresh
     ) { func ->
         FunctionItem(func, actions)
     }

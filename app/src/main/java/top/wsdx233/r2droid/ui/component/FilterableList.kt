@@ -5,9 +5,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -18,6 +20,7 @@ fun <T> FilterableList(
     filterPredicate: (T, String) -> Boolean,
     modifier: Modifier = Modifier,
     placeholder: String = "Search...",
+    onRefresh: (() -> Unit)? = null,
     itemContent: @Composable (T) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -41,11 +44,28 @@ fun <T> FilterableList(
     Column(modifier = modifier.fillMaxSize()) {
 
         Spacer(modifier = Modifier.height(4.dp))
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it },
-            placeholder = placeholder
-        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                placeholder = placeholder,
+                modifier = Modifier.weight(1f)
+            )
+            
+            if (onRefresh != null) {
+                IconButton(onClick = onRefresh) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(4.dp))
 

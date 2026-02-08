@@ -461,12 +461,12 @@ fun ProjectScreen(
 
                             when (selectedListTabIndex) {
                                 0 -> state.binInfo?.let { OverviewCard(it) } ?: Text("No Data", Modifier.align(Alignment.Center))
-                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions)
-                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions)
-                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions)
-                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations, listItemActions)
-                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings, listItemActions)
-                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions, listItemActions)
+                                1 -> if (state.sections == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SectionList(state.sections, listItemActions, onRefresh = { viewModel.loadSections(forceRefresh = true) })
+                                2 -> if (state.symbols == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else SymbolList(state.symbols, listItemActions, onRefresh = { viewModel.loadSymbols(forceRefresh = true) })
+                                3 -> if (state.imports == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else ImportList(state.imports, listItemActions, onRefresh = { viewModel.loadImports(forceRefresh = true) })
+                                4 -> if (state.relocations == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else RelocationList(state.relocations, listItemActions, onRefresh = { viewModel.loadRelocations(forceRefresh = true) })
+                                5 -> if (state.strings == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else StringList(state.strings, listItemActions, onRefresh = { viewModel.loadStrings(forceRefresh = true) })
+                                6 -> if (state.functions == null) CircularProgressIndicator(modifier = Modifier.align(Alignment.Center)) else FunctionList(state.functions, listItemActions, onRefresh = { viewModel.loadFunctions(forceRefresh = true) })
                             }
                         }
                         MainCategory.Detail -> {
