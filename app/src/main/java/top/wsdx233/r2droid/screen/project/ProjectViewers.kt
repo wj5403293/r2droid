@@ -3,10 +3,16 @@ package top.wsdx233.r2droid.screen.project
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.platform.LocalClipboardManager
+
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,14 +33,24 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.data.HexDataManager
 import top.wsdx233.r2droid.data.model.*
@@ -59,6 +75,22 @@ fun HexViewer(
     
     // Observe cache version to trigger recomposition when chunks load
     val cacheVersion by viewModel.hexCacheVersion.collectAsState()
+    val xrefsState by viewModel.xrefsState.collectAsState()
+    
+    // Menu & Dialog States
+    var showMenu by remember { mutableStateOf(false) }
+    var menuTargetAddress by remember { mutableStateOf<Long?>(null) }
+    
+    // Editing States
+    var showKeyboard by remember { mutableStateOf(false) }
+    var editingBuffer by remember { mutableStateOf("") } // Stores partial nibble input (0-1 char)
+    
+    // Modification Dialogs
+    var showModifyDialog by remember { mutableStateOf(false) }
+    var modifyType by remember { mutableStateOf("hex") } // hex, string, asm
+    var showCustomCommandDialog by remember { mutableStateOf(false) }
+    
+    val clipboardManager = LocalClipboardManager.current
     
     if (hexDataManager == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -82,12 +114,12 @@ fun HexViewer(
     // Use getRowIndexForAddress for correct mapping with virtual address offsets
     val initialRowIndex = hexDataManager.getRowIndexForAddress(cursorAddress).coerceIn(0, maxOf(0, totalRows - 1))
     
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState(
+    val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialRowIndex.coerceAtLeast(0)
     )
     
     // Coroutine scope for scrollbar interactions
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
     
     // Auto-scroll to cursor when it changes
     LaunchedEffect(cursorAddress) {
@@ -144,6 +176,62 @@ fun HexViewer(
     val hexColumnHeaderText = colorResource(R.color.hex_column_header_text)
     
     Column(Modifier.fillMaxSize()) {
+        // Overlay container for Menu and Dialogs
+        if (xrefsState.visible) {
+             if (xrefsState.isLoading) {
+                 AlertDialog(
+                     onDismissRequest = { viewModel.dismissXrefs() },
+                     title = { Text("Loading Xrefs...") },
+                     text = { 
+                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                     },
+                     confirmButton = {}
+                 )
+             } else {
+                 XrefsDialog(
+                     xrefsData = xrefsState.data,
+                     targetAddress = xrefsState.targetAddress,
+                     onDismiss = { viewModel.dismissXrefs() },
+                     onJump = { addr ->
+                         viewModel.jumpToAddress(addr)
+                         viewModel.dismissXrefs()
+                     }
+                 )
+             }
+        }
+        
+        // Modify Dialog
+        if (showModifyDialog && menuTargetAddress != null) {
+            val title = when(modifyType) {
+                "hex" -> "Modify Hex (wx)"
+                "string" -> "Modify String (w)"
+                "asm" -> "Modify Opcode (wa)"
+                else -> "Modify"
+            }
+            ModifyDialog(
+                title = title,
+                initialValue = "",
+                onDismiss = { showModifyDialog = false },
+                onConfirm = { value ->
+                     when(modifyType) {
+                        "hex" -> viewModel.writeHex(menuTargetAddress!!, value)
+                        "string" -> viewModel.writeString(menuTargetAddress!!, value)
+                        "asm" -> viewModel.writeAsm(menuTargetAddress!!, value)
+                     }
+                }
+            )
+        }
+        
+        // Custom Command Dialog
+        if (showCustomCommandDialog) {
+            CustomCommandDialog(
+                onDismiss = { showCustomCommandDialog = false },
+                onConfirm = { /* handled internally */ }
+            )
+        }
+
         // Sticky Header: 0 1 2 3 4 5 6 7
         Row(
             modifier = Modifier
@@ -192,7 +280,7 @@ fun HexViewer(
                         }
                         Text(
                             colIndex.toString(),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                             fontSize = 12.sp,
                             color = hexColumnHeaderText
                         )
@@ -242,7 +330,8 @@ fun HexViewer(
 
         
         Box(Modifier.weight(1f)) {
-            SelectionContainer {
+            // Removed SelectionContainer to fix crash on long press
+            // (java.lang.IllegalArgumentException: Comparison method violates its general contract!)
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize().background(hexContentBackground),
@@ -278,7 +367,51 @@ fun HexViewer(
                                 cursorAddress = cursorAddress,
                                 selectedColumn = selectedColumn,
                                 highlightColor = highlightColor,
-                                onByteClick = onByteClick,
+                                onByteClick = { clickedAddr ->
+                                    if (clickedAddr == cursorAddress) {
+                                        // Already selected, show context menu
+                                        menuTargetAddress = clickedAddr
+                                        showMenu = true
+                                    } else if (showKeyboard) {
+                                        // If keyboard is open, clicking just moves cursor and resets buffer
+                                        onByteClick(clickedAddr)
+                                        editingBuffer = ""
+                                    } else {
+                                        onByteClick(clickedAddr)
+                                    }
+                                },
+                                onByteLongClick = { clickedAddr ->
+                                    menuTargetAddress = clickedAddr
+                                    showMenu = true
+                                },
+                                showMenu = showMenu && menuTargetAddress != null && menuTargetAddress in (addr until addr + b1.size.toLong()),
+                                menuContent = {
+                                    if (menuTargetAddress != null) {
+                                        HexContextMenu(
+                                            expanded = showMenu,
+                                            address = menuTargetAddress!!,
+                                            onDismiss = { showMenu = false },
+                                            onCopy = { text ->
+                                                clipboardManager.setText(AnnotatedString(text))
+                                                showMenu = false
+                                            },
+                                            onModify = { type ->
+                                                modifyType = type
+                                                showModifyDialog = true
+                                                showMenu = false
+                                            },
+                                            onXrefs = {
+                                                viewModel.fetchXrefs(menuTargetAddress!!)
+                                                showMenu = false
+                                            },
+                                            onCustomCommand = {
+                                                showCustomCommandDialog = true
+                                                showMenu = false
+                                            },
+                                        )
+                                    }
+                                },
+                                editingBuffer = if (cursorAddress >= addr && cursorAddress < addr + 8) editingBuffer else "",
                                 hexAddressBackground = hexAddressBackground,
                                 hexAddressText = hexAddressText,
                                 hexRowEven = hexRowEven,
@@ -294,7 +427,51 @@ fun HexViewer(
                                     cursorAddress = cursorAddress,
                                     selectedColumn = selectedColumn,
                                     highlightColor = highlightColor,
-                                    onByteClick = onByteClick,
+                                    onByteClick = { clickedAddr ->
+                                        if (clickedAddr == cursorAddress) {
+                                            // Already selected, show context menu
+                                            menuTargetAddress = clickedAddr
+                                            showMenu = true
+                                        } else if (showKeyboard) {
+                                            onByteClick(clickedAddr)
+                                            editingBuffer = ""
+                                        } else {
+                                            onByteClick(clickedAddr)
+                                        }
+                                    },
+                                    onByteLongClick = { clickedAddr ->
+                                        menuTargetAddress = clickedAddr
+                                        showMenu = true
+                                    },
+                                    showMenu = showMenu && menuTargetAddress != null && menuTargetAddress in (addr + 8 until addr + 8 + b2.size.toLong()),
+                                    menuTargetAddress = menuTargetAddress,
+                                    menuContent = {
+                                        if (menuTargetAddress != null) {
+                                            HexContextMenu(
+                                                expanded = showMenu,
+                                                address = menuTargetAddress!!,
+                                                onDismiss = { showMenu = false },
+                                                onCopy = { text ->
+                                                    clipboardManager.setText(AnnotatedString(text))
+                                                    showMenu = false
+                                                },
+                                                onModify = { type ->
+                                                    modifyType = type
+                                                    showModifyDialog = true
+                                                    showMenu = false
+                                                },
+                                                onXrefs = {
+                                                    viewModel.fetchXrefs(menuTargetAddress!!)
+                                                    showMenu = false
+                                                },
+                                                onCustomCommand = {
+                                                    showCustomCommandDialog = true
+                                                    showMenu = false
+                                                }
+                                            )
+                                        }
+                                    },
+                                    editingBuffer = if (cursorAddress >= addr && cursorAddress < addr + 8) editingBuffer else "",
                                     hexAddressBackground = hexAddressBackground,
                                     hexAddressText = hexAddressText,
                                     hexRowEven = hexRowEven,
@@ -309,7 +486,7 @@ fun HexViewer(
                         }
                     }
                 }
-            }
+            // End of LazyColumn (SelectionContainer was removed)
             
             // Fast Scrollbar
             if (totalSize > 0) {
@@ -351,27 +528,78 @@ fun HexViewer(
                      val bias = (thumbY * 2 - 1).coerceIn(-1f, 1f)
                      Box(
                          Modifier
-                             .align(androidx.compose.ui.BiasAlignment(0f, bias))
+                             .align(BiasAlignment(0f, bias))
                              .size(8.dp, 40.dp)
-                             .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                             .background(MaterialTheme.colorScheme.primary,
+                                 RoundedCornerShape(4.dp)
+                             )
                      )
                  }
             }
         }
         
-        // Footer: Info
+
+        // Footer: Info & Keyboard Toggle
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(hexFooterBackground)
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            val currentPos = hexDataManager.getRowAddress(listState.firstVisibleItemIndex)
-            Text("Pos: ${"0x%X".format(currentPos)}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = hexByteText)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { showKeyboard = !showKeyboard },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Keyboard,
+                        contentDescription = "Toggle Keyboard",
+                        tint = if (showKeyboard) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                val currentPos = hexDataManager.getRowAddress(listState.firstVisibleItemIndex)
+                Text("Pos: ${"0x%X".format(currentPos)}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = hexByteText)
+            }
             if (totalSize > 0L) {
                 Text("Range: ${"0x%X".format(hexDataManager.viewStartAddress)}-${"0x%X".format(hexDataManager.viewEndAddress)}", fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = hexByteText)
             }
+        }
+        
+        // Hex Keyboard - shown when showKeyboard is true
+        if (showKeyboard) {
+            HexKeyboard(
+                onNibbleClick = { char ->
+                    // Build up 2-char hex input
+                    val newBuffer = editingBuffer + char
+                    if (newBuffer.length >= 2) {
+                        // Write the byte
+                        val byteValue = newBuffer.uppercase().toInt(16)
+                        viewModel.writeHex(cursorAddress, "%02X".format(byteValue))
+                        editingBuffer = ""
+                        // Move to next byte
+                        onByteClick(cursorAddress + 1)
+                    } else {
+                        editingBuffer = newBuffer
+                    }
+                },
+                onBackspace = {
+                    if (editingBuffer.isNotEmpty()) {
+                        editingBuffer = editingBuffer.dropLast(1)
+                    } else {
+                        // Move to previous byte
+                        if (cursorAddress > hexDataManager.viewStartAddress) {
+                            onByteClick(cursorAddress - 1)
+                        }
+                    }
+                },
+                onClose = {
+                    showKeyboard = false
+                    editingBuffer = ""
+                }
+            )
         }
     }
 }
@@ -449,6 +677,11 @@ fun HexVisualRow(
     selectedColumn: Int,
     highlightColor: Color,
     onByteClick: (Long) -> Unit,
+    onByteLongClick: (Long) -> Unit = {},
+    showMenu: Boolean = false,
+    menuTargetAddress: Long? = null,
+    menuContent: @Composable () -> Unit = {},
+    editingBuffer: String = "",
     hexAddressBackground: Color = Color(0xFFDDDDDD),
     hexAddressText: Color = Color(0xFF424242),
     hexRowEven: Color = Color.White,
@@ -514,31 +747,67 @@ fun HexVisualRow(
                 // For selected cell: use primary container
                 // For column/row highlight: use semi-transparent yellow overlay
                 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clickable { onByteClick(byteAddr) }
-                        .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Overlay: row highlight or column highlight (30% transparent yellow)
-                    if (!isSelected && (isRowSelected || isColumnHighlighted)) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(highlightColor)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .pointerInput(byteAddr) {
+                                detectTapGestures(
+                                    onTap = { onByteClick(byteAddr) },
+                                    onLongPress = { onByteLongClick(byteAddr) }
+                                )
+                            }
+                            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Overlay: row highlight or column highlight (30% transparent yellow)
+                        if (!isSelected && (isRowSelected || isColumnHighlighted)) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(highlightColor)
+                            )
+                        }
+                        
+                        // Show editing buffer overlay if selected and typing
+                        val displayText = if (isSelected && editingBuffer.isNotEmpty()) {
+                             editingBuffer
+                        } else {
+                             "%02X".format(b)
+                        }
+                        
+                        val textColor = if (isSelected) {
+                            if (editingBuffer.isNotEmpty()) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            hexByteText
+                        }
+
+                        Text(
+                             text = displayText,
+                             fontFamily = FontFamily.Monospace,
+                             fontSize = 13.sp,
+                             color = textColor,
+                             textAlign = TextAlign.Center,
+                             fontWeight = FontWeight.Medium
                         )
+                        
+                        // Anchor menu to selected byte logic is tricky in Row since menu needs anchor.
+                        // We pass menuContent to HexVisualRow, so we can anchor it here if needed.
+                        // But HexVisualRow shows multiple bytes. We need to find the right byte to anchor.
+
                     }
-                    Text(
-                         text = "%02X".format(b),
-                         fontFamily = FontFamily.Monospace,
-                         fontSize = 13.sp,
-                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else hexByteText,
-                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                         fontWeight = FontWeight.Medium
-                    )
-                }
+
+                    // Render menu IF this specific byte is the target
+                    // The 'showMenu' param passed to HexVisualRow assumes the row is target?
+                    // Let's refine HexVisualRow params above to fix this.
+                    // The 'showMenu' logic in HexViewer was: 
+                    // showMenu = showMenu && menuTargetAddress != null && menuTargetAddress == addr && (addr in (b1.indices.map { addr + it }))
+                    // This is for the ROW. But we need per-byte anchor.
+                    // Actually, anchoring to the row is fine if offset is handled, but Popup needs specific position.
+                    // Let's just render the menu here if this byte is the target.
+                    if (showMenu && byteAddr == menuTargetAddress) {
+                         menuContent()
+                    }
              }
              // Padding if < 8 bytes
              repeat(8 - bytes.size) { padIndex ->
@@ -619,12 +888,12 @@ fun DisassemblyViewer(
     val xrefsState by viewModel.xrefsState.collectAsState()
     
     // Menu & Dialog States
-    var showMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var menuTargetAddress by remember { androidx.compose.runtime.mutableStateOf<Long?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var menuTargetAddress by remember { mutableStateOf<Long?>(null) }
     
-    var showModifyDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var modifyType by remember { androidx.compose.runtime.mutableStateOf("hex") } // hex, string, asm
-    var showCustomCommandDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showModifyDialog by remember { mutableStateOf(false) }
+    var modifyType by remember { mutableStateOf("hex") } // hex, string, asm
+    var showCustomCommandDialog by remember { mutableStateOf(false) }
     
     val clipboardManager = LocalClipboardManager.current
     
@@ -657,16 +926,16 @@ fun DisassemblyViewer(
         disasmDataManager.findClosestIndex(cursorAddress).coerceAtLeast(0)
     }
     
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState(
+    val listState = rememberLazyListState(
         initialFirstVisibleItemIndex = initialIndex.coerceIn(0, maxOf(0, loadedCount - 1))
     )
     
     // Coroutine scope for scrollbar interactions
-    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val coroutineScope = rememberCoroutineScope()
     
     // Track previous cursor address to only scroll when it actually changes
-    var previousCursorAddress by remember { androidx.compose.runtime.mutableStateOf(cursorAddress) }
-    var hasInitiallyScrolled by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var previousCursorAddress by remember { mutableStateOf(cursorAddress) }
+    var hasInitiallyScrolled by remember { mutableStateOf(false) }
     
     // Auto-scroll to cursor ONLY when cursorAddress changes (not on data load)
     LaunchedEffect(cursorAddress) {
@@ -707,7 +976,7 @@ fun DisassemblyViewer(
     
     // Load more when near edges - use snapshotFlow for better control
     LaunchedEffect(listState) {
-        androidx.compose.runtime.snapshotFlow {
+        snapshotFlow {
             Triple(
                 listState.firstVisibleItemIndex,
                 listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0,
@@ -900,7 +1169,7 @@ fun DisassemblyViewer(
             val bias = (thumbY * 2 - 1).coerceIn(-1f, 1f)
             Box(
                 Modifier
-                    .align(androidx.compose.ui.BiasAlignment(0f, bias))
+                    .align(BiasAlignment(0f, bias))
                     .size(8.dp, 40.dp)
                     .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
             )
@@ -1093,7 +1362,7 @@ fun DisasmRow(
     val isFunctionStart = instr.fcnAddr > 0 && instr.addr == instr.fcnAddr
     
     // Check for external jump out/in
-    val isExternalJumpOut = instr.isJumpOut()
+    val isExternalJumpOut = instr.isJumpOut()   
     val hasExternalJumpIn = instr.hasJumpIn()
     
     // Check if this is a jump instruction (internal or external)
@@ -1415,8 +1684,8 @@ fun DecompilationViewer(
         return
     }
 
-    var textLayoutResult by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.text.TextLayoutResult?>(null) }
-    val scrollState = androidx.compose.foundation.rememberScrollState()
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val scrollState = rememberScrollState()
 
     // Split code into lines for line number display
     val lines = data.code.lines()
@@ -1494,14 +1763,14 @@ fun DecompilationViewer(
     }
     
     // Auto-scroll logic
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val density = LocalDensity.current
+    val config = LocalConfiguration.current
     
     // Track previous cursor address to only scroll when it actually changes
-    var previousCursorAddress by remember { androidx.compose.runtime.mutableStateOf(cursorAddress) }
-    var hasInitiallyScrolled by remember { androidx.compose.runtime.mutableStateOf(false) }
-    
-    androidx.compose.runtime.LaunchedEffect(cursorAddress, textLayoutResult) {
+    var previousCursorAddress by remember { mutableStateOf(cursorAddress) }
+    var hasInitiallyScrolled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cursorAddress, textLayoutResult) {
         val layout = textLayoutResult ?: return@LaunchedEffect
         if (cursorAddress == 0L) return@LaunchedEffect
         
@@ -1634,7 +1903,7 @@ fun DisasmContextMenu(
 ) {
     if (expanded) {
         // State to track which menu is currently visible: "main", "copy", "modify"
-        var currentMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("main") }
+        var currentMenu by remember { mutableStateOf("main") }
         
         DropdownMenu(
             expanded = expanded,
@@ -1650,7 +1919,7 @@ fun DisasmContextMenu(
                         onClick = { currentMenu = "copy" },
                         trailingIcon = { 
                             Icon(
-                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, 
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = "Submenu"
                             ) 
                         }
@@ -1662,7 +1931,7 @@ fun DisasmContextMenu(
                         onClick = { currentMenu = "modify" },
                         trailingIcon = { 
                             Icon(
-                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, 
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
                                 contentDescription = "Submenu"
                             ) 
                         }
@@ -1690,7 +1959,7 @@ fun DisasmContextMenu(
                         onClick = { currentMenu = "main" },
                         leadingIcon = { 
                             Icon(
-                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, 
+                                Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back"
                             ) 
                         }
@@ -1728,13 +1997,205 @@ fun DisasmContextMenu(
                         onClick = { currentMenu = "main" },
                         leadingIcon = { 
                             Icon(
-                                androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, 
+                                Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back"
                             ) 
                         }
                     )
                     HorizontalDivider()
                     
+                    DropdownMenuItem(
+                        text = { Text("Modify Hex") },
+                        onClick = { onModify("hex") }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Modify String") },
+                        onClick = { onModify("string") }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Modify Opcode") },
+                        onClick = { onModify("asm") }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HexKeyboard(
+    onNibbleClick: (Char) -> Unit,
+    onBackspace: () -> Unit,
+    onClose: () -> Unit
+) {
+    // Layout like reference image: 2 rows of 8 keys
+    val row1 = listOf('0', '1', '2', '3', '4', '5', '6', '7')
+    val row2 = listOf('8', '9', 'A', 'B', 'C', 'D', 'E', 'F')
+    
+    // Colors matching the reference image (dark theme with cyan accents)
+    val keyBackground = Color(0xFF2D2D2D) // Dark gray key background
+    val keyTextColor = Color(0xFF4DD0E1) // Cyan text color
+    val containerColor = Color(0xFF1A1A1A) // Very dark container
+    
+    Surface(
+        color = containerColor,
+        tonalElevation = 4.dp,
+        shadowElevation = 8.dp
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            // First row: 0-7
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                row1.forEach { char ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .background(keyBackground, RoundedCornerShape(4.dp))
+                            .clickable { onNibbleClick(char) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = char.toString(),
+                            color = keyTextColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            
+            // Second row: 8-F with keyboard icon at the end
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                row2.forEach { char ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .background(keyBackground, RoundedCornerShape(4.dp))
+                            .clickable { onNibbleClick(char) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = char.toString(),
+                            color = keyTextColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            
+            // Action row: Backspace and Close
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Backspace button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .background(Color(0xFF3D3D3D), RoundedCornerShape(4.dp))
+                        .clickable { onBackspace() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Backspace",
+                        tint = Color(0xFFE0E0E0)
+                    )
+                }
+                
+                // Close/Hide keyboard button
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp)
+                        .background(Color(0xFF3D3D3D), RoundedCornerShape(4.dp))
+                        .clickable { onClose() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.KeyboardArrowDown,
+                        contentDescription = "Close Keyboard",
+                        tint = Color(0xFFE0E0E0)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HexContextMenu(
+    expanded: Boolean,
+    address: Long,
+    onDismiss: () -> Unit,
+    onCopy: (String) -> Unit,
+    onModify: (String) -> Unit, // type: hex, string, asm
+    onXrefs: () -> Unit,
+    onCustomCommand: () -> Unit
+) {
+    if (expanded) {
+        var currentMenu by remember { mutableStateOf("main") }
+        
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss
+        ) {
+            when (currentMenu) {
+                "main" -> {
+                    DropdownMenuItem(
+                        text = { Text("Copy...") },
+                        onClick = { currentMenu = "copy" },
+                        trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Submenu") }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Modify...") },
+                        onClick = { currentMenu = "modify" },
+                        trailingIcon = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Submenu") }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Xrefs") },
+                        onClick = { onXrefs() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Custom Command...") },
+                        onClick = { onCustomCommand() }
+                    )
+                }
+                "copy" -> {
+                    DropdownMenuItem(
+                        text = { Text("Back") },
+                        onClick = { currentMenu = "main" },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Address") },
+                        onClick = { onCopy("0x%08x".format(address)) }
+                    )
+                }
+                "modify" -> {
+                    DropdownMenuItem(
+                        text = { Text("Back") },
+                        onClick = { currentMenu = "main" },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    )
+                    HorizontalDivider()
                     DropdownMenuItem(
                         text = { Text("Modify Hex") },
                         onClick = { onModify("hex") }
