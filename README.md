@@ -1,9 +1,13 @@
 
+![R2droid](preview/icon.png)
 # R2Droid
 
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
 ![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-blue.svg)
 ![Radare2](https://img.shields.io/badge/Engine-Radare2-orange.svg)
+
+![R2droid](preview/preview.png)
+
 
 **R2Droid** is a modern, native Android GUI for the [Radare2](https://github.com/radareorg/radare2) reverse engineering framework. Built with Kotlin and Jetpack Compose, it brings powerful binary analysis capabilities to mobile devices with a clean, touch-friendly interface.
 

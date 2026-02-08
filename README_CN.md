@@ -1,4 +1,15 @@
+
+![R2droid](preview/icon.png)
+
+
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple.svg)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-blue.svg)
+![Radare2](https://img.shields.io/badge/Engine-Radare2-orange.svg)
+
 **R2Droid** 是一个基于 [Radare2](https://github.com/radareorg/radare2) 逆向工程框架的现代化 Android 原生 GUI 工具。它使用 Kotlin 和 Jetpack Compose 构建，旨在为移动设备提供强大且界面友好的二进制分析体验。
+
+
+![R2droid](preview/preview.png)
 
 ## ✨ 主要功能
 
