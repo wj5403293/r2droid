@@ -24,7 +24,7 @@ import top.wsdx233.r2droid.screen.about.AboutScreen
 import top.wsdx233.r2droid.screen.home.HomeScreen
 import top.wsdx233.r2droid.screen.install.InstallScreen
 import top.wsdx233.r2droid.screen.permission.PermissionScreen
-import top.wsdx233.r2droid.screen.project.ProjectScreen
+import top.wsdx233.r2droid.feature.project.ProjectScreen
 import top.wsdx233.r2droid.ui.theme.R2droidTheme
 import top.wsdx233.r2droid.util.PermissionManager
 import top.wsdx233.r2droid.util.R2Installer

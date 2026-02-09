@@ -1,0 +1,162 @@
+package top.wsdx233.r2droid.feature.hex
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import top.wsdx233.r2droid.core.data.model.Section
+import top.wsdx233.r2droid.core.data.source.R2PipeDataSource
+import top.wsdx233.r2droid.feature.hex.data.HexDataManager
+import top.wsdx233.r2droid.feature.hex.data.HexRepository
+import top.wsdx233.r2droid.util.R2PipeManager
+
+/**
+ * ViewModel for Hex Viewer.
+ * Manages HexDataManager and hex-related interactions.
+ */
+class HexViewModel : ViewModel() {
+    private val r2DataSource = R2PipeDataSource()
+    private val hexRepository = HexRepository(r2DataSource)
+
+    // HexDataManager for virtualized hex viewing
+    var hexDataManager: HexDataManager? = null
+        private set
+
+    // Cache version counter - increment to trigger UI recomposition when chunks load
+    private val _hexCacheVersion = MutableStateFlow(0)
+    val hexCacheVersion: StateFlow<Int> = _hexCacheVersion.asStateFlow()
+
+    // Event to notify that data has been modified (so other views like Disasm can refresh)
+    private val _dataModifiedEvent = MutableStateFlow(0L) // Timestamp/Sequence
+    val dataModifiedEvent: StateFlow<Long> = _dataModifiedEvent.asStateFlow()
+
+    /**
+     * Initialize hex viewer with virtualization.
+     * Uses Section info to calculate virtual address range.
+     */
+    fun loadHex(sections: List<Section>, currentFilePath: String?, currentOffset: Long) {
+        if (hexDataManager != null) return // Already initialized
+
+        viewModelScope.launch {
+            var startAddress = 0L
+            var endAddress = 0L
+
+            if (sections.isNotEmpty()) {
+                // Find min vAddr and max (vAddr + vSize) from all sections
+                startAddress = sections.minOf { it.vAddr }
+                endAddress = sections.maxOf { it.vAddr + maxOf(it.vSize, it.size) }
+            }
+
+            // Fallback if sections are empty or invalid
+            if (endAddress <= startAddress) {
+                // Try Java File API as fallback (file offset based)
+                currentFilePath?.let { path ->
+                    try {
+                        val file = java.io.File(path)
+                        if (file.exists() && file.isFile) {
+                            startAddress = 0L
+                            endAddress = file.length()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            // Final fallback - use a reasonable default range
+            if (endAddress <= startAddress) {
+                startAddress = 0L
+                endAddress = 1024L * 1024L // 1MB default
+            }
+
+            // Create HexDataManager with virtual address range
+            hexDataManager = HexDataManager(startAddress, endAddress, hexRepository).apply {
+                onChunkLoaded = { _ ->
+                    // Increment version to trigger recomposition
+                    _hexCacheVersion.value++
+                }
+            }
+
+            // Preload initial chunks around cursor
+            hexDataManager?.loadChunkIfNeeded(currentOffset)
+            hexDataManager?.preloadAround(currentOffset, 3)
+            
+            // Trigger initial update
+            _hexCacheVersion.value++
+        }
+    }
+
+    /**
+     * Load a hex chunk for a specific address (called from UI during scroll).
+     */
+    fun loadHexChunkForAddress(addr: Long) {
+        val manager = hexDataManager ?: return
+        viewModelScope.launch {
+            manager.loadChunkIfNeeded(addr)
+        }
+    }
+
+    /**
+     * Preload hex chunks around an address (called when user scrolls quickly).
+     */
+    fun preloadHexAround(addr: Long) {
+        val manager = hexDataManager ?: return
+        viewModelScope.launch {
+            manager.preloadAround(addr, 2)
+        }
+    }
+
+    fun writeHex(addr: Long, hex: String) {
+        viewModelScope.launch {
+            // "wx [hex] @ [addr]"
+            hexRepository.writeHex(addr, hex)
+            // Reload chunks to reflect changes
+            hexDataManager?.clearCache()
+            _hexCacheVersion.value++
+            
+            // Notify others
+            _dataModifiedEvent.value = System.currentTimeMillis()
+            
+            // Reload displayed data (around current view, but we mostly just cleared cache so next render will fetch)
+             // We don't have currentOffset here easily unless we pass it or store it. 
+             // Ideally UI observes version change -> recomposition -> view requests chunk for visible area.
+        }
+    }
+
+    fun writeString(addr: Long, text: String) {
+        viewModelScope.launch {
+            // "w [text] @ [addr]"
+            hexRepository.writeString(addr, text)
+            
+            hexDataManager?.clearCache()
+            _hexCacheVersion.value++
+            
+            // Notify others
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+    
+    fun writeAsm(addr: Long, asm: String) {
+        viewModelScope.launch {
+            // "wa [asm] @ [addr]"
+            val escaped = asm.replace("\"", "\\\"")
+            top.wsdx233.r2droid.util.R2PipeManager.execute("wa $escaped @ $addr")
+            
+            hexDataManager?.clearCache()
+            _hexCacheVersion.value++
+            
+            // Notify others
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+    
+    /**
+     * Called when other modules modify data (e.g. Disasm writes asm)
+     */
+    fun refreshData() {
+        hexDataManager?.clearCache()
+        _hexCacheVersion.value++
+    }
+}

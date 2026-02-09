@@ -1,0 +1,214 @@
+package top.wsdx233.r2droid.feature.disasm
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import top.wsdx233.r2droid.core.data.model.Section
+import top.wsdx233.r2droid.core.data.model.Xref
+import top.wsdx233.r2droid.core.data.model.XrefsData
+import top.wsdx233.r2droid.core.data.source.R2PipeDataSource
+import top.wsdx233.r2droid.feature.disasm.data.DisasmDataManager
+import top.wsdx233.r2droid.feature.disasm.data.DisasmRepository
+import top.wsdx233.r2droid.util.R2PipeManager
+
+data class XrefsState(
+    val visible: Boolean = false,
+    val data: XrefsData = XrefsData(),
+    val isLoading: Boolean = false,
+    val targetAddress: Long = 0L
+)
+
+/**
+ * ViewModel for Disassembly Viewer.
+ * Manages DisasmDataManager and disasm-related interactions.
+ */
+class DisasmViewModel : ViewModel() {
+    private val r2DataSource = R2PipeDataSource()
+    private val disasmRepository = DisasmRepository(r2DataSource)
+
+    // DisasmDataManager for virtualized disassembly viewing
+    var disasmDataManager: DisasmDataManager? = null
+        private set
+
+    // Cache version counter for disasm - increment to trigger UI recomposition when chunks load
+    private val _disasmCacheVersion = MutableStateFlow(0)
+    val disasmCacheVersion: StateFlow<Int> = _disasmCacheVersion.asStateFlow()
+
+    // Xrefs State
+    private val _xrefsState = MutableStateFlow(XrefsState())
+    val xrefsState: StateFlow<XrefsState> = _xrefsState.asStateFlow()
+
+    // Event to notify that data has been modified
+    private val _dataModifiedEvent = MutableStateFlow(0L)
+    val dataModifiedEvent: StateFlow<Long> = _dataModifiedEvent.asStateFlow()
+
+    /**
+     * Initialize disassembly viewer with virtualization.
+     * Uses Section info to calculate virtual address range.
+     */
+    fun loadDisassembly(sections: List<Section>, currentFilePath: String?, currentOffset: Long) {
+        if (disasmDataManager != null) {
+            // Already initialized, just preload around current cursor
+            viewModelScope.launch {
+                disasmDataManager?.preloadAround(currentOffset, 2)
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            var startAddress = 0L
+            var endAddress = 0L
+
+            if (sections.isNotEmpty()) {
+                // For disassembly, prefer executable sections (containing 'x' in perm)
+                val execSections = sections.filter { it.perm.contains("x") }
+
+                if (execSections.isNotEmpty()) {
+                    // Use executable sections range
+                    startAddress = execSections.minOf { it.vAddr }
+                    endAddress = execSections.maxOf { it.vAddr + maxOf(it.vSize, it.size) }
+                } else {
+                    // Fallback to all sections
+                    startAddress = sections.minOf { it.vAddr }
+                    endAddress = sections.maxOf { it.vAddr + maxOf(it.vSize, it.size) }
+                }
+            }
+
+            // Fallback if sections are empty or invalid
+            if (endAddress <= startAddress) {
+                // Try Java File API as fallback (file offset based)
+                currentFilePath?.let { path ->
+                    try {
+                        val file = java.io.File(path)
+                        if (file.exists() && file.isFile) {
+                            startAddress = 0L
+                            endAddress = file.length()
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+
+            // Final fallback - use a reasonable default range
+            if (endAddress <= startAddress) {
+                startAddress = 0L
+                endAddress = 1024L * 1024L // 1MB default
+            }
+
+            // Create DisasmDataManager with virtual address range
+            disasmDataManager = DisasmDataManager(startAddress, endAddress, disasmRepository).apply {
+                onChunkLoaded = { _ ->
+                    // Increment version to trigger recomposition
+                    _disasmCacheVersion.value++
+                }
+            }
+
+            // Load initial data around cursor
+            disasmDataManager?.resetAndLoadAround(currentOffset)
+            
+            _disasmCacheVersion.value++
+        }
+    }
+
+    /**
+     * Load a disasm chunk for a specific address (called from UI during scroll).
+     */
+    fun loadDisasmChunkForAddress(addr: Long) {
+        val manager = disasmDataManager ?: return
+        viewModelScope.launch {
+            manager.loadChunkAroundAddress(addr)
+        }
+    }
+
+    /**
+     * Preload disasm chunks around an address (called when user scrolls quickly).
+     */
+    fun preloadDisasmAround(addr: Long) {
+        val manager = disasmDataManager ?: return
+        viewModelScope.launch {
+            manager.preloadAround(addr, 2)
+        }
+    }
+
+    /**
+     * Load more disasm instructions (forward or backward).
+     */
+    fun loadDisasmMore(forward: Boolean) {
+        val manager = disasmDataManager ?: return
+        viewModelScope.launch {
+            manager.loadMore(forward)
+        }
+    }
+
+    fun writeAsm(addr: Long, asm: String) {
+        viewModelScope.launch {
+            // "wa [asm] @ [addr]"
+            disasmRepository.writeAsm(addr, asm)
+            
+            disasmDataManager?.clearCache()
+            _disasmCacheVersion.value++
+            
+            // Notify others
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+    
+    fun writeHex(addr: Long, hex: String) {
+        viewModelScope.launch {
+            // "wx [hex] @ [addr]"
+            top.wsdx233.r2droid.util.R2PipeManager.execute("wx $hex @ $addr")
+            
+            disasmDataManager?.clearCache()
+            _disasmCacheVersion.value++
+            
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+
+    fun writeString(addr: Long, text: String) {
+        viewModelScope.launch {
+            // "w [text] @ [addr]"
+            val escaped = text.replace("\"", "\\\"")
+            top.wsdx233.r2droid.util.R2PipeManager.execute("w \"$escaped\" @ $addr")
+            
+            disasmDataManager?.clearCache()
+            _disasmCacheVersion.value++
+            
+            _dataModifiedEvent.value = System.currentTimeMillis()
+        }
+    }
+    
+    /**
+     * Called when other modules modify data
+     */
+    fun refreshData() {
+        disasmDataManager?.clearCache()
+        _disasmCacheVersion.value++
+    }
+    
+    // === Xrefs ===
+    
+    fun fetchXrefs(addr: Long) {
+        // Show loading
+        _xrefsState.value = _xrefsState.value.copy(
+            visible = true, 
+            isLoading = true, 
+            data = XrefsData(),
+            targetAddress = addr
+        )
+        
+        viewModelScope.launch {
+            val result = disasmRepository.getXrefs(addr)
+            val xrefsData = result.getOrElse { XrefsData() }
+            _xrefsState.value = _xrefsState.value.copy(isLoading = false, data = xrefsData)
+        }
+    }
+    
+    fun dismissXrefs() {
+        _xrefsState.value = _xrefsState.value.copy(visible = false)
+    }
+}
