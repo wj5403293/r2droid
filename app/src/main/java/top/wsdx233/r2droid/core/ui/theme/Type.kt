@@ -17,4 +17,4 @@ val Typography = Typography(
     )
 )
 
-val LocalAppFont = androidx.compose.runtime.compositionLocalOf { FontFamily.Monospace }
+val LocalAppFont = androidx.compose.runtime.compositionLocalOf<FontFamily> { FontFamily.Monospace }

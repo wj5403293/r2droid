@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
             }
             
             androidx.compose.runtime.CompositionLocalProvider(
-                top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont as GenericFontFamily
+                top.wsdx233.r2droid.ui.theme.LocalAppFont provides customFont
             ) {
                 R2droidTheme {
                     // 监听全局安装状态

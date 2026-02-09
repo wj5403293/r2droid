@@ -1,0 +1,74 @@
+package top.wsdx233.r2droid.feature.project
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import top.wsdx233.r2droid.R
+import top.wsdx233.r2droid.core.ui.components.ListItemActions
+import top.wsdx233.r2droid.feature.bininfo.ui.FunctionList
+import top.wsdx233.r2droid.feature.bininfo.ui.ImportList
+import top.wsdx233.r2droid.feature.bininfo.ui.OverviewCard
+import top.wsdx233.r2droid.feature.bininfo.ui.RelocationList
+import top.wsdx233.r2droid.feature.bininfo.ui.SectionList
+import top.wsdx233.r2droid.feature.bininfo.ui.StringList
+import top.wsdx233.r2droid.feature.bininfo.ui.SymbolList
+import top.wsdx233.r2droid.feature.disasm.DisasmEvent
+import top.wsdx233.r2droid.feature.disasm.DisasmViewModel
+
+@Composable
+fun ProjectListView(
+    viewModel: ProjectViewModel = hiltViewModel(),
+    disasmViewModel: DisasmViewModel = hiltViewModel(),
+    tabIndex: Int,
+    onNavigateToDetail: (Long, Int) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val state = uiState as? ProjectUiState.Success ?: return
+
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    
+    val listItemActions = remember(viewModel, disasmViewModel, clipboardManager) {
+        ListItemActions(
+            onCopy = { text -> 
+                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(text))
+            },
+            onJumpToHex = { addr ->
+                onNavigateToDetail(addr, 0)
+            },
+            onJumpToDisasm = { addr ->
+                onNavigateToDetail(addr, 1)
+            },
+            onShowXrefs = { addr ->
+                disasmViewModel.onEvent(DisasmEvent.FetchXrefs(addr))
+            }
+        )
+    }
+
+    androidx.compose.runtime.LaunchedEffect(tabIndex) {
+        when (tabIndex) {
+            1 -> viewModel.onEvent(ProjectEvent.LoadSections())
+            2 -> viewModel.onEvent(ProjectEvent.LoadSymbols())
+            3 -> viewModel.onEvent(ProjectEvent.LoadImports())
+            4 -> viewModel.onEvent(ProjectEvent.LoadRelocations())
+            5 -> viewModel.onEvent(ProjectEvent.LoadStrings())
+            6 -> viewModel.onEvent(ProjectEvent.LoadFunctions())
+        }
+    }
+
+    when (tabIndex) {
+        0 -> state.binInfo?.let { OverviewCard(it) } ?: Text(stringResource(R.string.hex_no_data), Modifier.fillMaxSize())
+        1 -> if (state.sections == null) CircularProgressIndicator() else SectionList(state.sections, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadSections(forceRefresh = true)) })
+        2 -> if (state.symbols == null) CircularProgressIndicator() else SymbolList(state.symbols, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadSymbols(forceRefresh = true)) })
+        3 -> if (state.imports == null) CircularProgressIndicator() else ImportList(state.imports, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadImports(forceRefresh = true)) })
+        4 -> if (state.relocations == null) CircularProgressIndicator() else RelocationList(state.relocations, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadRelocations(forceRefresh = true)) })
+        5 -> if (state.strings == null) CircularProgressIndicator() else StringList(state.strings, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadStrings(forceRefresh = true)) })
+        6 -> if (state.functions == null) CircularProgressIndicator() else FunctionList(state.functions, listItemActions, onRefresh = { viewModel.onEvent(ProjectEvent.LoadFunctions(forceRefresh = true)) })
+    }
+}
