@@ -21,6 +21,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // 1. 定义签名配置
+    signingConfigs {
+        create("release") {
+            // 尝试从项目属性中读取，如果不存在则使用空字符串或本地调试配置
+            // GitHub Action 会通过命令行参数传入这些属性
+            storeFile = file(System.getProperty("KEYSTORE_FILE") ?: "keystore.jks")
+            storePassword = System.getProperty("KEYSTORE_PASSWORD")
+            keyAlias = System.getProperty("KEY_ALIAS")
+            keyPassword = System.getProperty("KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -28,6 +40,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 2. 应用签名配置
+            // 只有当提供了密码时才应用签名（避免本地构建报错）
+            if (System.getProperty("KEYSTORE_PASSWORD") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
