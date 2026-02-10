@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -44,17 +46,28 @@ jobs:
             -PKEY_ALIAS="$KEY_ALIAS" \
             -PKEY_PASSWORD="$KEY_PASSWORD"
 
+      - name: List Build Output (Debug)
+        run: find . -name "*.apk"
+
       - name: Rename APK
         run: |
-          # 重命名 APK 以包含版本号 (从 git tag 获取)
-          mv app/release/app-release.apk app/release/R2Droid-${{ github.ref_name }}.apk
+          # 1. 找到构建生成的原始 APK (注意路径变更)
+          # 2. 将其移动到根目录并重命名，方便后续步骤读取
+          mv app/build/outputs/apk/release/app-release.apk R2Droid-${{ github.ref_name }}.apk
+
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body: ${{ steps.build_changelog.outputs.changelog }}
           files: |
-            app/release/R2Droid-${{ github.ref_name }}.apk
-          generate_release_notes: true
+            # 注意：这里只需要文件名了，因为上一步我们把它移动到了根目录
+            R2Droid-${{ github.ref_name }}.apk
           draft: false
           prerelease: false
