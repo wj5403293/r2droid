@@ -1,8 +1,10 @@
 package top.wsdx233.r2droid.core.ui.components
 
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -17,7 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.stringResource
 import top.wsdx233.r2droid.R
 
@@ -38,6 +41,8 @@ fun UnifiedListItemWrapper(
     address: Long?,
     fullText: String,
     actions: ListItemActions,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
+    elevation: androidx.compose.ui.unit.Dp = 0.dp,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -46,11 +51,9 @@ fun UnifiedListItemWrapper(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .pointerInput(Unit) {
-               detectTapGestures(
-                   onTap = { expanded = true }
-               )
-            }
+            .shadow(elevation, shape)
+            .clip(shape)
+            .clickable { expanded = true }
     ) {
         content()
         

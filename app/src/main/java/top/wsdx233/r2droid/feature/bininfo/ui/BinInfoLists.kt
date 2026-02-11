@@ -1,25 +1,27 @@
 package top.wsdx233.r2droid.feature.bininfo.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.FunctionInfo
@@ -32,6 +34,77 @@ import top.wsdx233.r2droid.core.ui.components.FilterableList
 import top.wsdx233.r2droid.core.ui.components.ListItemActions
 import top.wsdx233.r2droid.core.ui.components.UnifiedListItemWrapper
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
+
+// ── Shared helper composables ──
+
+@Composable
+private fun AddressBadge(address: Long, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.12f)
+    ) {
+        Text(
+            text = "0x${address.toString(16)}",
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontFamily = LocalAppFont.current,
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun InfoTag(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color
+    )
+}
+
+
+@Composable
+private fun AccentBar(color: Color) {
+    Box(
+        modifier = Modifier
+            .padding(top = 1.dp)
+            .width(8.dp)
+            .fillMaxHeight()
+            .background(color)
+    )
+}
+
+
+// a simple preview of Tinted Item Surface
+@Preview(backgroundColor = 0xFFFFFF)
+@Composable
+private fun TintedItemSurfacePreview() {
+    TintedItemSurface(Color.Red) {
+        Box(modifier = Modifier.fillMaxWidth().padding(10.dp))
+    }
+}
+
+@Composable
+private fun TintedItemSurface(
+    accentColor: Color,
+    shape: androidx.compose.ui.graphics.Shape = androidx.compose.ui.graphics.RectangleShape,
+    content: @Composable () -> Unit
+) {
+    Surface(
+        color = accentColor.copy(alpha = 0.08f),
+        tonalElevation = 0.dp,
+        shape = shape
+    ) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
+            AccentBar(accentColor)
+            Box(modifier = Modifier.weight(1f)) {
+                content()
+            }
+        }
+    }
+}
+
+// ── Section ──
 
 @Composable
 fun SectionList(sections: List<Section>, actions: ListItemActions, onRefresh: (() -> Unit)? = null) {
@@ -47,48 +120,38 @@ fun SectionList(sections: List<Section>, actions: ListItemActions, onRefresh: ((
 
 @Composable
 fun SectionItem(section: Section, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.tertiary
     UnifiedListItemWrapper(
         title = section.name,
         address = section.vAddr,
         fullText = "Section: ${section.name}, Size: ${section.size}, Perm: ${section.perm}, VAddr: 0x${section.vAddr.toString(16)}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = section.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = section.perm,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        InfoTag(section.perm, accent)
+                        InfoTag("Size: ${section.size}")
+                    }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Size: ${section.size}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Text(
-                        text = "VAddr: 0x${section.vAddr.toString(16)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = LocalAppFont.current
-                    )
-                }
+                AddressBadge(section.vAddr, accent)
             }
         }
     }
@@ -108,38 +171,35 @@ fun SymbolList(symbols: List<Symbol>, actions: ListItemActions, onRefresh: (() -
 
 @Composable
 fun SymbolItem(symbol: Symbol, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.primary
     UnifiedListItemWrapper(
         title = symbol.name,
         address = symbol.vAddr,
         fullText = "Symbol: ${symbol.name}, Type: ${symbol.type}, VAddr: 0x${symbol.vAddr.toString(16)}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        OutlinedCard {
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
                         text = symbol.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = symbol.type,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    InfoTag(symbol.type)
                 }
-                Text(
-                    text = "0x${symbol.vAddr.toString(16)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = LocalAppFont.current,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                AddressBadge(symbol.vAddr, accent)
             }
         }
     }
@@ -159,36 +219,36 @@ fun ImportList(imports: List<ImportInfo>, actions: ListItemActions, onRefresh: (
 
 @Composable
 fun ImportItem(importInfo: ImportInfo, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.error
     UnifiedListItemWrapper(
         title = importInfo.name,
         address = if(importInfo.plt != 0L) importInfo.plt else null,
         fullText = "Import: ${importInfo.name}, Type: ${importInfo.type}, PLT: 0x${importInfo.plt.toString(16)}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
                         text = importInfo.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "Type: ${importInfo.type}",
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    InfoTag(importInfo.type)
                 }
                 if (importInfo.plt != 0L) {
-                     Text(
-                        text = "PLT: 0x${importInfo.plt.toString(16)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = LocalAppFont.current
-                    )
+                    AddressBadge(importInfo.plt, accent)
                 }
             }
         }
@@ -209,24 +269,37 @@ fun RelocationList(relocations: List<Relocation>, actions: ListItemActions, onRe
 
 @Composable
 fun RelocationItem(relocation: Relocation, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.secondary
     UnifiedListItemWrapper(
         title = relocation.name,
         address = relocation.vAddr,
         fullText = "Relocation: ${relocation.name}, Type: ${relocation.type}, VAddr: 0x${relocation.vAddr.toString(16)}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        ListItem(
-            headlineContent = { Text(relocation.name, style = MaterialTheme.typography.bodyMedium) },
-            supportingContent = { Text("Type: ${relocation.type}", style = MaterialTheme.typography.labelSmall) },
-            trailingContent = {
-                Text(
-                    "0x${relocation.vAddr.toString(16)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = LocalAppFont.current
-                )
-            },
-            colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
-        )
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = relocation.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    InfoTag(relocation.type)
+                }
+                AddressBadge(relocation.vAddr, accent)
+            }
+        }
     }
 }
 
@@ -244,40 +317,38 @@ fun StringList(strings: List<StringInfo>, actions: ListItemActions, onRefresh: (
 
 @Composable
 fun StringItem(stringInfo: StringInfo, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.tertiary
     UnifiedListItemWrapper(
         title = stringInfo.string,
         address = stringInfo.vAddr,
         fullText = "String: ${stringInfo.string}, Section: ${stringInfo.section}, VAddr: 0x${stringInfo.vAddr.toString(16)}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        Card(
-            border = null,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
-                Text(
-                    text = stringInfo.string,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 3
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                     Text(
-                        text = "0x${stringInfo.vAddr.toString(16)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontFamily = LocalAppFont.current
-                    )
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = stringInfo.type,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
+                        text = stringInfo.string,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accent,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = stringInfo.section,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        InfoTag(stringInfo.section)
+                        InfoTag(stringInfo.type, accent)
+                    }
                 }
+                AddressBadge(stringInfo.vAddr, accent)
             }
         }
     }
@@ -297,50 +368,41 @@ fun FunctionList(functions: List<FunctionInfo>, actions: ListItemActions, onRefr
 
 @Composable
 fun FunctionItem(func: FunctionInfo, actions: ListItemActions) {
+    val accent = MaterialTheme.colorScheme.primary
     UnifiedListItemWrapper(
         title = func.name,
         address = func.addr,
         fullText = "Function: ${func.name}, Addr: 0x${func.addr.toString(16)}, Size: ${func.size}, BBs: ${func.nbbs}, Signature: ${func.signature}",
-        actions = actions
+        actions = actions,
+        shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp),
+        elevation = 1.dp
     ) {
-        ElevatedCard {
-            Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
-                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        TintedItemSurface(accent, shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 0.dp)) {
+            Row(
+                modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = func.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.weight(1f)
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "sz: ${func.size}",
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(
-                        text = "0x${func.addr.toString(16)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = LocalAppFont.current
-                    )
-                    Text(
-                        text = "bbs: ${func.nbbs}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (func.signature.isNotEmpty()) {
-                         Text(
-                            text = func.signature,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f)
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        InfoTag("sz:${func.size}")
+                        InfoTag("bbs:${func.nbbs}")
+                        if (func.signature.isNotEmpty()) {
+                            InfoTag(func.signature, MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
+                AddressBadge(func.addr, accent)
             }
         }
     }
