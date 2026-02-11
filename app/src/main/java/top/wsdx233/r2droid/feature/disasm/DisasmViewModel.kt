@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.core.data.model.FunctionDetailInfo
 import top.wsdx233.r2droid.core.data.model.FunctionVariablesData
 import top.wsdx233.r2droid.core.data.model.FunctionXref
+import top.wsdx233.r2droid.core.data.model.InstructionDetail
 import top.wsdx233.r2droid.core.data.model.Section
 import top.wsdx233.r2droid.core.data.model.Xref
 import top.wsdx233.r2droid.core.data.model.XrefsData
@@ -52,6 +53,13 @@ data class FunctionVariablesState(
     val targetAddress: Long = 0L
 )
 
+data class InstructionDetailState(
+    val visible: Boolean = false,
+    val data: InstructionDetail? = null,
+    val isLoading: Boolean = false,
+    val targetAddress: Long = 0L
+)
+
 /**
  * ViewModel for Disassembly Viewer.
  * Manages DisasmDataManager and disasm-related interactions.
@@ -78,6 +86,8 @@ sealed interface DisasmEvent {
     data class FetchFunctionVariables(val address: Long) : DisasmEvent
     object DismissFunctionVariables : DisasmEvent
     data class RenameFunctionVariable(val address: Long, val oldName: String, val newName: String) : DisasmEvent
+    data class FetchInstructionDetail(val address: Long) : DisasmEvent
+    object DismissInstructionDetail : DisasmEvent
 }
 
 @HiltViewModel
@@ -112,6 +122,10 @@ class DisasmViewModel @Inject constructor(
     private val _functionVariablesState = MutableStateFlow(FunctionVariablesState())
     val functionVariablesState: StateFlow<FunctionVariablesState> = _functionVariablesState.asStateFlow()
 
+    // Instruction Detail State
+    private val _instructionDetailState = MutableStateFlow(InstructionDetailState())
+    val instructionDetailState: StateFlow<InstructionDetailState> = _instructionDetailState.asStateFlow()
+
     // Scroll target: emitted after data is loaded at target address
     // Pair of (targetAddress, index) - UI observes this to scroll after data is ready
     private val _scrollTarget = MutableStateFlow<Pair<Long, Int>?>(null)
@@ -142,6 +156,8 @@ class DisasmViewModel @Inject constructor(
             is DisasmEvent.FetchFunctionVariables -> fetchFunctionVariables(event.address)
             is DisasmEvent.DismissFunctionVariables -> dismissFunctionVariables()
             is DisasmEvent.RenameFunctionVariable -> renameFunctionVariable(event.address, event.oldName, event.newName)
+            is DisasmEvent.FetchInstructionDetail -> fetchInstructionDetail(event.address)
+            is DisasmEvent.DismissInstructionDetail -> dismissInstructionDetail()
         }
     }
 
@@ -421,5 +437,23 @@ class DisasmViewModel @Inject constructor(
             resetAndScrollTo(addr)
             _dataModifiedEvent.value = System.currentTimeMillis()
         }
+    }
+
+    // === Instruction Detail ===
+
+    private fun fetchInstructionDetail(addr: Long) {
+        _instructionDetailState.value = InstructionDetailState(
+            visible = true, isLoading = true, targetAddress = addr
+        )
+        viewModelScope.launch {
+            val result = disasmRepository.getInstructionDetail(addr)
+            _instructionDetailState.value = _instructionDetailState.value.copy(
+                isLoading = false, data = result.getOrNull()
+            )
+        }
+    }
+
+    private fun dismissInstructionDetail() {
+        _instructionDetailState.value = _instructionDetailState.value.copy(visible = false)
     }
 }

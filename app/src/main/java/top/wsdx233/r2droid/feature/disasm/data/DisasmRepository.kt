@@ -178,6 +178,16 @@ class DisasmRepository @Inject constructor(private val r2DataSource: R2DataSourc
         return r2DataSource.execute("afvn $newName $oldName @ $addr")
     }
 
+    suspend fun getInstructionDetail(addr: Long): Result<top.wsdx233.r2droid.core.data.model.InstructionDetail?> {
+        return r2DataSource.executeJson("aoj @ $addr").mapCatching { output ->
+            if (output.isBlank() || output == "[]") return@mapCatching null
+            val jsonArray = JSONArray(output)
+            if (jsonArray.length() > 0) {
+                top.wsdx233.r2droid.core.data.model.InstructionDetail.fromJson(jsonArray.getJSONObject(0))
+            } else null
+        }
+    }
+
     private suspend fun getFunctionNameForAddress(addr: Long): String {
         return try {
             val result = r2DataSource.executeJson("afij @ $addr")

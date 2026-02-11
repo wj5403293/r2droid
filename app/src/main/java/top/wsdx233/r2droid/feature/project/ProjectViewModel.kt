@@ -18,6 +18,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
+/**
+ * Extensible graph type enum. Add new types here as needed.
+ */
+enum class GraphType {
+    FunctionFlow,   // agj - function basic block flow graph
+    XrefGraph        // agrj - cross-reference graph
+}
+
 sealed interface ProjectEvent {
     data class JumpToAddress(val address: Long) : ProjectEvent
     data class UpdateCursor(val address: Long) : ProjectEvent
@@ -30,6 +38,7 @@ sealed interface ProjectEvent {
     data class LoadStrings(val forceRefresh: Boolean = false) : ProjectEvent
     data class LoadFunctions(val forceRefresh: Boolean = false) : ProjectEvent
     object LoadDecompilation : ProjectEvent
+    data class LoadGraph(val graphType: GraphType) : ProjectEvent
     object Initialize : ProjectEvent
     object StartRestoreSession : ProjectEvent
     data class StartAnalysisSession(val cmd: String, val writable: Boolean, val flags: String) : ProjectEvent
@@ -57,6 +66,9 @@ sealed class ProjectUiState {
         val disasmReady: Boolean = false, // Indicates disasm viewer is ready (virtualized)
         val disassembly: List<DisasmInstruction>? = null,
         val decompilation: DecompilationData? = null,
+        val graphData: GraphData? = null,
+        val graphType: GraphType = GraphType.FunctionFlow,
+        val graphLoading: Boolean = false,
         val cursorAddress: Long = 0L
     ) : ProjectUiState()
     data class Error(val message: String) : ProjectUiState()
@@ -119,6 +131,7 @@ class ProjectViewModel @Inject constructor(
             is ProjectEvent.LoadStrings -> loadStrings(event.forceRefresh)
             is ProjectEvent.LoadFunctions -> loadFunctions(event.forceRefresh)
             is ProjectEvent.LoadDecompilation -> loadDecompilation()
+            is ProjectEvent.LoadGraph -> loadGraph(event.graphType)
             is ProjectEvent.ClearLogs -> clearLogs()
             is ProjectEvent.ExecuteCommand -> executeCommand(event.cmd, event.callback)
             is ProjectEvent.SaveProject -> saveProject(event.name, event.analysisLevel)
@@ -513,6 +526,28 @@ class ProjectViewModel @Inject constructor(
                 decompilation = null,
                 cursorAddress = addr
             )
+        }
+    }
+
+    fun loadGraph(graphType: GraphType) {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+
+        viewModelScope.launch {
+            _uiState.value = current.copy(graphLoading = true, graphType = graphType, graphData = null)
+
+            val funcStart = repository.getFunctionStart(currentOffset).getOrDefault(currentOffset)
+            val result = when (graphType) {
+                GraphType.FunctionFlow -> repository.getFunctionGraph(funcStart)
+                GraphType.XrefGraph -> repository.getXrefGraph(funcStart)
+            }
+
+            val currentState = _uiState.value
+            if (currentState is ProjectUiState.Success) {
+                _uiState.value = currentState.copy(
+                    graphData = result.getOrNull(),
+                    graphLoading = false
+                )
+            }
         }
     }
 

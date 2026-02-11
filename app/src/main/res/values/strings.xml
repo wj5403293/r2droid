@@ -311,4 +311,32 @@
     <string name="history_title">Navigation History</string>
     <string name="history_subtitle">%1$d entries</string>
     <string name="history_empty">No navigation history.</string>
+
+    <!-- Graph Screen -->
+    <string name="proj_tab_graph">Graph</string>
+    <string name="graph_type_function_flow">Function Flow</string>
+    <string name="graph_type_xref">Xref Graph</string>
+    <string name="graph_no_data">No graph data</string>
+    <string name="menu_graph_xrefs">Cross References</string>
+    <string name="menu_graph_detail">View Details</string>
+
+    <!-- Instruction Detail Dialog -->
+    <string name="instr_detail_title">Instruction Detail</string>
+    <string name="instr_detail_opcode">Opcode</string>
+    <string name="instr_detail_description">Description</string>
+    <string name="instr_detail_disasm">Disassembly</string>
+    <string name="instr_detail_pseudo">Pseudo</string>
+    <string name="instr_detail_mnemonic">Mnemonic</string>
+    <string name="instr_detail_address">Address</string>
+    <string name="instr_detail_bytes">Bytes</string>
+    <string name="instr_detail_size">Size</string>
+    <string name="instr_detail_type">Type</string>
+    <string name="instr_detail_family">Family</string>
+    <string name="instr_detail_jump">Jump</string>
+    <string name="instr_detail_fail">Fail</string>
+    <string name="instr_detail_esil">ESIL</string>
+    <string name="instr_detail_cycles">Cycles</string>
+    <string name="instr_detail_sign">Sign</string>
+    <string name="instr_detail_no_data">No instruction detail available.</string>
+    <string name="menu_instruction_detail">Instruction Detail</string>
 </resources>

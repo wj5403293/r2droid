@@ -48,6 +48,7 @@ import top.wsdx233.r2droid.core.ui.dialogs.FunctionInfoDialog
 import top.wsdx233.r2droid.core.ui.dialogs.FunctionVariablesDialog
 import top.wsdx233.r2droid.core.ui.dialogs.FunctionXrefsDialog
 import top.wsdx233.r2droid.core.ui.dialogs.ModifyDialog
+import top.wsdx233.r2droid.core.ui.dialogs.InstructionDetailDialog
 import top.wsdx233.r2droid.core.ui.dialogs.XrefsDialog
 
 import top.wsdx233.r2droid.core.ui.components.AutoHideAddressScrollbar
@@ -329,6 +330,10 @@ fun DisassemblyViewer(
                                 onFunctionVariables = {
                                     viewModel.onEvent(DisasmEvent.FetchFunctionVariables(instr.addr))
                                     showMenu = false
+                                },
+                                onInstructionDetail = {
+                                    viewModel.onEvent(DisasmEvent.FetchInstructionDetail(instr.addr))
+                                    showMenu = false
                                 }
                             )
                         },
@@ -470,6 +475,18 @@ fun DisassemblyViewer(
                         )
                     )
                 }
+            )
+        }
+
+        // Instruction Detail Dialog
+        val instructionDetailState by viewModel.instructionDetailState.collectAsState()
+        if (instructionDetailState.visible) {
+            InstructionDetailDialog(
+                detail = instructionDetailState.data,
+                isLoading = instructionDetailState.isLoading,
+                targetAddress = instructionDetailState.targetAddress,
+                onDismiss = { viewModel.onEvent(DisasmEvent.DismissInstructionDetail) },
+                onJump = { addr -> onInstructionClick(addr) }
             )
         }
     }

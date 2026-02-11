@@ -372,6 +372,51 @@ class ProjectRepository @Inject constructor() {
         return R2PipeManager.execute("afvn $newName $oldName @ $addr")
     }
 
+    // === Graph Operations ===
+
+    /**
+     * Get function flow graph (agj) for the function at the given address.
+     */
+    suspend fun getFunctionGraph(addr: Long): Result<GraphData> {
+        val cmd = "agj @ $addr"
+        return R2PipeManager.executeJson(cmd).mapCatching { output ->
+            if (output.isBlank() || output == "[]") throw RuntimeException("Empty graph output")
+            val jsonArray = JSONArray(output)
+            GraphData.fromAgj(jsonArray)
+        }
+    }
+
+    /**
+     * Get cross-reference graph (agrj) for the function at the given address.
+     */
+    suspend fun getXrefGraph(addr: Long): Result<GraphData> {
+        val cmd = "s $addr; agrj"
+        return R2PipeManager.executeJson(cmd).mapCatching { output ->
+            if (output.isBlank() || output == "{}") throw RuntimeException("Empty xref graph output")
+            val json = JSONObject(output)
+            GraphData.fromAgrj(json)
+        }
+    }
+
+    /**
+     * Resolve a function name to its address using afij@<name>.
+     * Called lazily on click rather than eagerly on load.
+     */
+    suspend fun resolveFunctionAddress(name: String): Long {
+        return try {
+            val result = R2PipeManager.executeJson("afij@$name")
+            if (result.isSuccess) {
+                val out = result.getOrDefault("")
+                if (out.isNotBlank() && out.startsWith("[")) {
+                    val arr = JSONArray(out)
+                    if (arr.length() > 0) {
+                        arr.getJSONObject(0).optLong("addr", 0L)
+                    } else 0L
+                } else 0L
+            } else 0L
+        } catch (_: Exception) { 0L }
+    }
+
     /**
      * Get function name for an address using afij.
      * Returns the function name if the address is within a function, empty string otherwise.

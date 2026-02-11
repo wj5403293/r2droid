@@ -30,7 +30,8 @@ fun DisasmContextMenu(
     onAnalyzeFunction: () -> Unit = {},
     onFunctionInfo: () -> Unit = {},
     onFunctionXrefs: () -> Unit = {},
-    onFunctionVariables: () -> Unit = {}
+    onFunctionVariables: () -> Unit = {},
+    onInstructionDetail: () -> Unit = {}
 ) {
     if (expanded) {
         // State to track which menu is currently visible: "main", "copy", "modify"
@@ -87,7 +88,13 @@ fun DisasmContextMenu(
                         text = { Text(stringResource(R.string.menu_xrefs)) },
                         onClick = { onXrefs() }
                     )
-                    
+
+                    // Instruction Detail
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.menu_instruction_detail)) },
+                        onClick = { onInstructionDetail() }
+                    )
+
                     // Custom Command
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.menu_custom_command)) },

@@ -113,7 +113,7 @@ fun ProjectScaffold(
         R.string.proj_tab_overview, R.string.proj_tab_search, R.string.proj_tab_sections, R.string.proj_tab_symbols,
         R.string.proj_tab_imports, R.string.proj_tab_relocs, R.string.proj_tab_strings, R.string.proj_tab_functions
     )
-    val detailTabs = listOf(R.string.proj_tab_hex, R.string.proj_tab_disassembly, R.string.proj_tab_decompile)
+    val detailTabs = listOf(R.string.proj_tab_hex, R.string.proj_tab_disassembly, R.string.proj_tab_decompile, R.string.proj_tab_graph)
     val projectTabs = listOf(R.string.proj_tab_settings, R.string.proj_tab_cmd, R.string.proj_tab_logs)
 
     Scaffold(
@@ -145,7 +145,7 @@ fun ProjectScaffold(
                                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
                             )
                         }
-                        if (selectedDetailTabIndex in 0..2) {
+                        if (selectedDetailTabIndex in 0..3) {
                             androidx.compose.material3.IconButton(onClick = { viewModel.onEvent(ProjectEvent.RequestScrollToSelection) }) {
                                 Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.proj_nav_scroll_to_selection))
                             }
@@ -285,8 +285,9 @@ fun ProjectScaffold(
                             }
                         }
                         MainCategory.Detail -> {
-                            TabRow(
+                            ScrollableTabRow(
                                 selectedTabIndex = selectedDetailTabIndex,
+                                edgePadding = 0.dp,
                                 containerColor = MaterialTheme.colorScheme.surface,
                                 contentColor = MaterialTheme.colorScheme.primary,
                                 indicator = { tabPositions ->

@@ -314,4 +314,32 @@
     <string name="history_subtitle">%1$d 条记录</string>
     <string name="history_empty">暂无导航历史。</string>
 
+    <!-- Graph Screen -->
+    <string name="proj_tab_graph">流程图</string>
+    <string name="graph_type_function_flow">函数流程图</string>
+    <string name="graph_type_xref">交叉引用图</string>
+    <string name="graph_no_data">无图形数据</string>
+    <string name="menu_graph_xrefs">交叉引用</string>
+    <string name="menu_graph_detail">查看详情</string>
+
+    <!-- Instruction Detail Dialog -->
+    <string name="instr_detail_title">指令详情</string>
+    <string name="instr_detail_opcode">操作码</string>
+    <string name="instr_detail_description">描述</string>
+    <string name="instr_detail_disasm">反汇编</string>
+    <string name="instr_detail_pseudo">伪代码</string>
+    <string name="instr_detail_mnemonic">助记符</string>
+    <string name="instr_detail_address">地址</string>
+    <string name="instr_detail_bytes">字节</string>
+    <string name="instr_detail_size">大小</string>
+    <string name="instr_detail_type">类型</string>
+    <string name="instr_detail_family">指令族</string>
+    <string name="instr_detail_jump">跳转目标</string>
+    <string name="instr_detail_fail">失败目标</string>
+    <string name="instr_detail_esil">ESIL</string>
+    <string name="instr_detail_cycles">周期</string>
+    <string name="instr_detail_sign">符号</string>
+    <string name="instr_detail_no_data">无指令详情。</string>
+    <string name="menu_instruction_detail">指令详情</string>
+
 </resources>

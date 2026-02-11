@@ -485,3 +485,176 @@ data class FunctionVariablesData(
     val all: List<FunctionVariable> get() = reg + sp + bp
     val isEmpty: Boolean get() = reg.isEmpty() && sp.isEmpty() && bp.isEmpty()
 }
+
+// === Instruction Detail Model (aoj output) ===
+
+data class InstructionDetail(
+    val opcode: String,
+    val disasm: String,
+    val description: String,
+    val pseudo: String,
+    val mnemonic: String,
+    val addr: Long,
+    val bytes: String,
+    val size: Int,
+    val type: String,
+    val family: String,
+    val jump: Long? = null,
+    val fail: Long? = null,
+    val esil: String,
+    val cycles: Int,
+    val sign: Boolean
+) {
+    companion object {
+        fun fromJson(json: JSONObject): InstructionDetail {
+            return InstructionDetail(
+                opcode = json.optString("opcode", ""),
+                disasm = json.optString("disasm", ""),
+                description = json.optString("description", ""),
+                pseudo = json.optString("pseudo", ""),
+                mnemonic = json.optString("mnemonic", ""),
+                addr = json.optLong("addr", 0),
+                bytes = json.optString("bytes", ""),
+                size = json.optInt("size", 0),
+                type = json.optString("type", ""),
+                family = json.optString("family", ""),
+                jump = if (json.has("jump")) json.optLong("jump") else null,
+                fail = if (json.has("fail")) json.optLong("fail") else null,
+                esil = json.optString("esil", ""),
+                cycles = json.optInt("cycles", 0),
+                sign = json.optBoolean("sign", false)
+            )
+        }
+    }
+}
+
+// === Graph Models ===
+
+/**
+ * A single instruction within a graph block node (from agj ops).
+ */
+data class GraphBlockInstruction(
+    val addr: Long,
+    val opcode: String,
+    val disasm: String,
+    val type: String,
+    val bytes: String,
+    val jump: Long? = null,
+    val fail: Long? = null
+) {
+    companion object {
+        fun fromJson(json: JSONObject): GraphBlockInstruction {
+            return GraphBlockInstruction(
+                addr = json.optLong("addr", 0),
+                opcode = json.optString("opcode", ""),
+                disasm = json.optString("disasm", json.optString("opcode", "")),
+                type = json.optString("type", ""),
+                bytes = json.optString("bytes", ""),
+                jump = if (json.has("jump")) json.optLong("jump") else null,
+                fail = if (json.has("fail")) json.optLong("fail") else null
+            )
+        }
+    }
+}
+
+/**
+ * Unified graph node that works for both agrj and agj output.
+ */
+data class GraphNode(
+    val id: Int,
+    val title: String,
+    val address: Long = 0L,
+    val body: String = "",
+    val outNodes: List<Int> = emptyList(),
+    val instructions: List<GraphBlockInstruction> = emptyList()
+)
+
+/**
+ * Graph data holding all nodes. Used for both function flow (agj) and xref (agrj) graphs.
+ */
+data class GraphData(
+    val nodes: List<GraphNode>,
+    val title: String = ""
+) {
+    companion object {
+        /**
+         * Parse agrj output: {"nodes":[{"id":0,"title":"...","body":"","out_nodes":[1,2]}]}
+         */
+        fun fromAgrj(json: JSONObject): GraphData {
+            val nodesArray = json.optJSONArray("nodes") ?: return GraphData(emptyList())
+            val nodes = mutableListOf<GraphNode>()
+            for (i in 0 until nodesArray.length()) {
+                val n = nodesArray.getJSONObject(i)
+                val outNodes = mutableListOf<Int>()
+                n.optJSONArray("out_nodes")?.let { arr ->
+                    for (j in 0 until arr.length()) outNodes.add(arr.getInt(j))
+                }
+                nodes.add(GraphNode(
+                    id = n.optInt("id", i),
+                    title = n.optString("title", ""),
+                    body = n.optString("body", ""),
+                    outNodes = outNodes
+                ))
+            }
+            return GraphData(nodes)
+        }
+
+        /**
+         * Parse agj output: [{"name":"...","blocks":[{"addr":...,"ops":[...]}]}]
+         * Converts blocks to graph nodes with edges derived from jump/fail targets.
+         */
+        fun fromAgj(jsonArray: org.json.JSONArray): GraphData {
+            if (jsonArray.length() == 0) return GraphData(emptyList())
+            val func = jsonArray.getJSONObject(0)
+            val funcName = func.optString("name", "")
+            val blocksArray = func.optJSONArray("blocks") ?: return GraphData(emptyList())
+
+            // First pass: collect all block addresses and assign IDs
+            val blockAddrToId = mutableMapOf<Long, Int>()
+            val nodes = mutableListOf<GraphNode>()
+
+            for (i in 0 until blocksArray.length()) {
+                val block = blocksArray.getJSONObject(i)
+                val addr = block.optLong("addr", 0)
+                blockAddrToId[addr] = i
+            }
+
+            // Second pass: build nodes with edges
+            for (i in 0 until blocksArray.length()) {
+                val block = blocksArray.getJSONObject(i)
+                val addr = block.optLong("addr", 0)
+                val opsArray = block.optJSONArray("ops")
+                val instructions = mutableListOf<GraphBlockInstruction>()
+                val jumpTargets = mutableSetOf<Long>()
+
+                if (opsArray != null) {
+                    for (j in 0 until opsArray.length()) {
+                        val op = opsArray.getJSONObject(j)
+                        val instr = GraphBlockInstruction.fromJson(op)
+                        instructions.add(instr)
+                        instr.jump?.let { jumpTargets.add(it) }
+                        instr.fail?.let { jumpTargets.add(it) }
+                    }
+                }
+
+                // If no explicit jumps, the next block is the fallthrough
+                if (jumpTargets.isEmpty() && i + 1 < blocksArray.length()) {
+                    val nextAddr = blocksArray.getJSONObject(i + 1).optLong("addr", 0)
+                    jumpTargets.add(nextAddr)
+                }
+
+                val outNodes = jumpTargets.mapNotNull { blockAddrToId[it] }
+
+                nodes.add(GraphNode(
+                    id = i,
+                    title = "0x%X".format(addr),
+                    address = addr,
+                    instructions = instructions,
+                    outNodes = outNodes
+                ))
+            }
+
+            return GraphData(nodes, title = funcName)
+        }
+    }
+}

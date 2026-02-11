@@ -13,10 +13,12 @@ import top.wsdx233.r2droid.feature.decompiler.ui.DecompilationViewer
 import top.wsdx233.r2droid.feature.disasm.DisasmEvent
 import top.wsdx233.r2droid.feature.disasm.DisasmViewModel
 import top.wsdx233.r2droid.feature.disasm.ui.DisassemblyViewer
+import top.wsdx233.r2droid.feature.graph.ui.GraphScreen
 import top.wsdx233.r2droid.feature.hex.HexEvent
 import top.wsdx233.r2droid.feature.hex.HexViewModel
 import top.wsdx233.r2droid.feature.hex.ui.HexViewer
 import top.wsdx233.r2droid.util.R2PipeManager
+import top.wsdx233.r2droid.core.ui.dialogs.InstructionDetailDialog
 
 @Composable
 fun ProjectDetailView(
@@ -46,6 +48,7 @@ fun ProjectDetailView(
                 disasmViewModel.onEvent(DisasmEvent.LoadDisassembly(sections, path, cursor))
             }
             2 -> viewModel.onEvent(ProjectEvent.LoadDecompilation)
+            3 -> viewModel.onEvent(ProjectEvent.LoadGraph(state.graphType))
         }
     }
     
@@ -53,6 +56,7 @@ fun ProjectDetailView(
         val cursor = state.cursorAddress
         if (tabIndex == 0) hexViewModel.onEvent(HexEvent.PreloadHex(cursor))
         if (tabIndex == 1) disasmViewModel.onEvent(DisasmEvent.Preload(cursor))
+        if (tabIndex == 3) viewModel.onEvent(ProjectEvent.LoadGraph(state.graphType))
     }
     
     when(tabIndex) {
@@ -110,6 +114,37 @@ fun ProjectDetailView(
                     onAddressClick = { addr -> viewModel.onEvent(ProjectEvent.UpdateCursor(addr)) }
                 )
             }
+        }
+        3 -> {
+            GraphScreen(
+                graphData = state.graphData,
+                graphLoading = state.graphLoading,
+                currentGraphType = state.graphType,
+                cursorAddress = state.cursorAddress,
+                scrollToSelectionTrigger = viewModel.scrollToSelectionTrigger,
+                onGraphTypeSelected = { type ->
+                    viewModel.onEvent(ProjectEvent.LoadGraph(type))
+                },
+                onAddressClick = { addr -> viewModel.onEvent(ProjectEvent.JumpToAddress(addr)) },
+                onShowXrefs = { addr -> disasmViewModel.onEvent(DisasmEvent.FetchXrefs(addr)) },
+                onShowInstructionDetail = { addr -> disasmViewModel.onEvent(DisasmEvent.FetchInstructionDetail(addr)) }
+            )
+        }
+    }
+
+    // Global dialogs - rendered on any tab when triggered from graph views
+    // XrefsDialog is handled globally in ProjectScaffold
+    // InstructionDetailDialog needs to be shown from graph tab too
+    if (tabIndex != 1) {
+        val instrDetailState by disasmViewModel.instructionDetailState.collectAsState()
+        if (instrDetailState.visible) {
+            InstructionDetailDialog(
+                detail = instrDetailState.data,
+                isLoading = instrDetailState.isLoading,
+                targetAddress = instrDetailState.targetAddress,
+                onDismiss = { disasmViewModel.onEvent(DisasmEvent.DismissInstructionDetail) },
+                onJump = { addr -> viewModel.onEvent(ProjectEvent.JumpToAddress(addr)) }
+            )
         }
     }
 }
