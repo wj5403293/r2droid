@@ -1,5 +1,6 @@
 package top.wsdx233.r2droid.util
 
+import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import top.wsdx233.r2droid.core.data.model.UpdateInfo
@@ -15,12 +16,12 @@ object UpdateManager {
      * Check for updates silently (no error thrown)
      * @return true if update is available, false otherwise
      */
-    suspend fun checkForUpdateSilently(): Boolean {
+    suspend fun checkForUpdateSilently(context: Context): Boolean {
         if (_isChecking.value) return false
 
         _isChecking.value = true
         return try {
-            val update = UpdateChecker.checkForUpdate()
+            val update = UpdateChecker.checkForUpdate(context)
             _updateInfo.value = update
             update != null
         } catch (e: Exception) {
@@ -35,12 +36,12 @@ object UpdateManager {
      * Check for updates and throw exception on failure
      * Used for manual checks where user expects feedback
      */
-    suspend fun checkForUpdate(): UpdateInfo? {
+    suspend fun checkForUpdate(context: Context): UpdateInfo? {
         if (_isChecking.value) return null
 
         _isChecking.value = true
         return try {
-            val update = UpdateChecker.checkForUpdate()
+            val update = UpdateChecker.checkForUpdate(context)
             _updateInfo.value = update
             update
         } finally {

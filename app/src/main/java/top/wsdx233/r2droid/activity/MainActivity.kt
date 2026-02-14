@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
 
         // 启动时自动检查更新（静默失败）
         lifecycleScope.launch {
-            top.wsdx233.r2droid.util.UpdateManager.checkForUpdateSilently()
+            top.wsdx233.r2droid.util.UpdateManager.checkForUpdateSilently(applicationContext)
         }
         
         enableEdgeToEdge()

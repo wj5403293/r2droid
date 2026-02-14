@@ -1,10 +1,10 @@
 package top.wsdx233.r2droid.util
 
 import android.content.Context
+import android.content.pm.PackageManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import top.wsdx233.r2droid.BuildConfig
 import top.wsdx233.r2droid.core.data.model.GitHubRelease
 import top.wsdx233.r2droid.core.data.model.UpdateInfo
 import java.net.HttpURLConnection
@@ -18,7 +18,7 @@ object UpdateChecker {
      * @return UpdateInfo if a newer version is available, null otherwise
      * @throws Exception if network request fails
      */
-    suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdate(context: Context): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val url = URL(GITHUB_API_URL)
             val connection = url.openConnection() as HttpURLConnection
@@ -38,17 +38,18 @@ object UpdateChecker {
             val jsonObject = JSONObject(response)
             val release = GitHubRelease.fromJson(jsonObject)
 
-            val currentVersion = BuildConfig.VERSION_NAME
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val currentVersion = packageInfo.versionName
             val latestVersion = release.tagName.removePrefix("v")
 
             // Compare versions
-            if (isNewerVersion(latestVersion, currentVersion)) {
+            if (currentVersion != null && isNewerVersion(latestVersion, currentVersion)) {
                 // Find APK asset
                 val apkAsset = release.assets.find { it.name.endsWith(".apk") }
                 if (apkAsset != null) {
                     return@withContext UpdateInfo(
                         latestVersion = latestVersion,
-                        currentVersion = currentVersion,
+                        currentVersion = currentVersion ?: "0.0.0",
                         downloadUrl = apkAsset.browserDownloadUrl,
                         releaseUrl = release.htmlUrl,
                         releaseNotes = release.body

@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import top.wsdx233.r2droid.R
@@ -249,28 +251,25 @@ fun SettingsScreen(
                     icon = Icons.Default.SystemUpdate,
                     onClick = {
                         if (!isChecking) {
-                            kotlinx.coroutines.GlobalScope.launch {
+                            // 使用 CoroutineScope 启动协程
+                            kotlinx.coroutines.MainScope().launch {
                                 try {
-                                    val update = top.wsdx233.r2droid.util.UpdateManager.checkForUpdate()
+                                    val update = top.wsdx233.r2droid.util.UpdateManager.checkForUpdate(context)
                                     if (update == null) {
                                         // Show "no update available" message
-                                        kotlinx.coroutines.launch(kotlinx.coroutines.Dispatchers.Main) {
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                context.getString(R.string.update_no_update),
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                } catch (e: Exception) {
-                                    // Show error message
-                                    kotlinx.coroutines.launch(kotlinx.coroutines.Dispatchers.Main) {
                                         android.widget.Toast.makeText(
                                             context,
-                                            context.getString(R.string.update_check_failed),
+                                            context.getString(R.string.update_no_update),
                                             android.widget.Toast.LENGTH_SHORT
                                         ).show()
                                     }
+                                } catch (e: Exception) {
+                                    // Show error message
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        context.getString(R.string.update_check_failed),
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         }
