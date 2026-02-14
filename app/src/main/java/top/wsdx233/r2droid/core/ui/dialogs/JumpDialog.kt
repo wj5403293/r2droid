@@ -15,22 +15,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import top.wsdx233.r2droid.R
 
 @Composable
 fun JumpDialog(
     initialAddress: String,
     onDismiss: () -> Unit,
-    onJump: (Long) -> Unit
+    onJump: (Long) -> Unit,
+    onResolveExpression: suspend (String) -> Result<Long>
 ) {
     var text by remember { mutableStateOf(initialAddress) }
     var error by remember { mutableStateOf<String?>(null) }
-    
+    var isResolving by remember { mutableStateOf(false) }
+
     val title = stringResource(R.string.dialog_jump_title)
     val addressLabel = stringResource(R.string.dialog_jump_address_label)
     val addressHint = stringResource(R.string.dialog_jump_address_hint)
     val errorEmpty = stringResource(R.string.dialog_jump_error_empty)
     val errorInvalid = stringResource(R.string.dialog_jump_error_invalid)
+    val errorResolve = stringResource(R.string.dialog_jump_error_resolve)
     val goLabel = stringResource(R.string.dialog_jump_go)
     val cancelLabel = stringResource(R.string.dialog_cancel)
 
@@ -41,8 +45,8 @@ fun JumpDialog(
             Column {
                 OutlinedTextField(
                     value = text,
-                    onValueChange = { 
-                        text = it 
+                    onValueChange = {
+                        text = it
                         error = null
                     },
                     label = { Text(addressLabel) },
@@ -63,21 +67,44 @@ fun JumpDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val addrStr = text.removePrefix("0x").trim()
-                    if (addrStr.isBlank()) {
+                    val input = text.trim()
+                    if (input.isBlank()) {
                         error = errorEmpty
                         return@TextButton
                     }
-                    try {
-                        val addr = addrStr.toLong(16)
-                        onJump(addr)
-                        onDismiss()
-                    } catch (e: NumberFormatException) {
-                         error = errorInvalid
+
+                    // 尝试解析输入的表达式
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        isResolving = true
+                        error = null
+
+                        try {
+                            // 首先尝试直接解析为十六进制地址
+                            val addrStr = input.removePrefix("0x").trim()
+                            val addr = addrStr.toLong(16)
+                            onJump(addr)
+                            onDismiss()
+                            return@launch
+                        } catch (e: NumberFormatException) {
+                            // 如果不是有效的十六进制地址，尝试解析为表达式
+                        }
+
+                        // 尝试解析为函数名、符号或表达式
+                        val result = onResolveExpression(input)
+                        if (result.isSuccess) {
+                            val addr = result.getOrThrow()
+                            onJump(addr)
+                            onDismiss()
+                        } else {
+                            error = errorResolve
+                        }
+
+                        isResolving = false
                     }
-                }
+                },
+                enabled = !isResolving
             ) {
-                Text(goLabel)
+                Text(if (isResolving) stringResource(R.string.dialog_jump_resolving) else goLabel)
             }
         },
         dismissButton = {

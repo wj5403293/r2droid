@@ -236,6 +236,8 @@
     <string name="dialog_jump_address_hint">例如: 0x401000</string>
     <string name="dialog_jump_error_empty">地址不能为空</string>
     <string name="dialog_jump_error_invalid">无效的十六进制地址</string>
+    <string name="dialog_jump_error_resolve">无法解析表达式</string>
+    <string name="dialog_jump_resolving">解析中...</string>
     <string name="dialog_jump_go">跳转</string>
     <string name="dialog_cancel">取消</string>
 

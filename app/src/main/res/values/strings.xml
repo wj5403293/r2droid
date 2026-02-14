@@ -264,6 +264,8 @@
     <string name="dialog_jump_address_hint">e.g. 0x401000</string>
     <string name="dialog_jump_error_empty">Address cannot be empty</string>
     <string name="dialog_jump_error_invalid">Invalid hex address</string>
+    <string name="dialog_jump_error_resolve">Failed to resolve expression</string>
+    <string name="dialog_jump_resolving">Resolving...</string>
     <string name="dialog_jump_go">Go</string>
     <string name="dialog_cancel">Cancel</string>
 

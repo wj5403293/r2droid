@@ -165,6 +165,9 @@ fun ProjectScaffold(
                     onJump = { addr ->
                         viewModel.onEvent(ProjectEvent.JumpToAddress(addr))
                         showJumpDialog = false
+                    },
+                    onResolveExpression = { expression ->
+                        viewModel.resolveExpression(expression)
                     }
                 )
             }

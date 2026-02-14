@@ -580,14 +580,21 @@ class ProjectViewModel @Inject constructor(
         viewModelScope.launch {
             val result = R2PipeManager.execute(cmd)
             val output = result.getOrDefault("")
-            
+
             callback(output)
-            
+
             // If command might modify data, reload
             if (cmd.startsWith("w") || cmd.startsWith("p")) {
                 _globalDataInvalidated.value = System.currentTimeMillis()
             }
         }
+    }
+
+    /**
+     * Resolve an expression (function name, symbol, or expression) to an address.
+     */
+    suspend fun resolveExpression(expression: String): Result<Long> {
+        return repository.resolveExpression(expression)
     }
     
     // === Project Saving ===
