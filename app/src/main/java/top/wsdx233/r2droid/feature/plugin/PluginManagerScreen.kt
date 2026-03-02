@@ -1,6 +1,8 @@
 package top.wsdx233.r2droid.feature.plugin
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +22,7 @@ import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,6 +43,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -66,6 +72,7 @@ fun PluginManagerScreen(
     val status by PluginManager.status.collectAsState()
     val isWorking by PluginManager.isWorking.collectAsState()
     val logs by PluginManager.logs.collectAsState()
+    val installProgress by PluginManager.installProgress.collectAsState()
 
     var sourceInput by remember { mutableStateOf("") }
     var selectedPage by remember { mutableStateOf<Pair<String, PluginPage>?>(null) }
@@ -76,6 +83,9 @@ fun PluginManagerScreen(
     }
 
     selectedPage?.let { (pluginId, page) ->
+        BackHandler(enabled = true) {
+            selectedPage = null
+        }
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -125,16 +135,6 @@ fun PluginManagerScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(R.string.plugin_status_prefix, status ?: "-"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
             val tabs = listOf(
                 stringResource(R.string.plugin_tab_plugins),
                 stringResource(R.string.plugin_tab_sources),
@@ -157,7 +157,9 @@ fun PluginManagerScreen(
                     installableCatalog = installableCatalog,
                     installed = installed,
                     isWorking = isWorking,
+                    installProgress = installProgress,
                     onInstall = { entry -> scope.launch { PluginManager.install(entry) } },
+                    onUpdate = { pluginId -> scope.launch { PluginManager.update(pluginId) } },
                     onDelete = { pluginId -> scope.launch { PluginManager.delete(pluginId) } },
                     onSetEnabled = { pluginId, enabled -> scope.launch { PluginManager.setEnabled(pluginId, enabled) } },
                     onOpenPage = { pluginId, page -> selectedPage = pluginId to page }
@@ -178,6 +180,7 @@ fun PluginManagerScreen(
                 )
 
                 else -> LogsTab(
+                    status = status,
                     logs = logs,
                     onClear = { PluginManager.clearLogs() }
                 )
@@ -191,22 +194,29 @@ private fun PluginListTab(
     installableCatalog: List<PluginCatalogItem>,
     installed: List<InstalledPlugin>,
     isWorking: Boolean,
+    installProgress: Map<String, Float>,
     onInstall: (PluginIndexEntry) -> Unit,
+    onUpdate: (String) -> Unit,
     onDelete: (String) -> Unit,
     onSetEnabled: (String, Boolean) -> Unit,
     onOpenPage: (String, PluginPage) -> Unit
 ) {
     val context = LocalContext.current
 
+    val expandedDescriptions = remember { mutableStateMapOf<String, Boolean>() }
+    val expandableDescriptions = remember { mutableStateMapOf<String, Boolean>() }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text(
-                text = stringResource(R.string.plugin_installed_title),
-                style = MaterialTheme.typography.titleMedium
-            )
+        if (installed.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.plugin_installed_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
 
         items(installed, key = { "installed_${it.state.id}" }) { plugin ->
@@ -285,8 +295,11 @@ private fun PluginListTab(
                                 when {
                                     openPage != null -> onOpenPage(plugin.state.id, openPage)
                                     terminal != null -> {
+                                        val startupCommand = PluginRuntime
+                                            .resolveTerminalStartupCommand(plugin.state.id, terminal.command)
+                                            .getOrElse { terminal.command }
                                         val intent = android.content.Intent(context, top.wsdx233.r2droid.activity.TerminalActivity::class.java)
-                                            .putExtra("startup_command", terminal.command)
+                                            .putExtra("startup_command", startupCommand)
                                         context.startActivity(intent)
                                     }
                                 }
@@ -303,11 +316,13 @@ private fun PluginListTab(
             }
         }
 
-        item {
-            Text(
-                text = stringResource(R.string.plugin_catalog_title),
-                style = MaterialTheme.typography.titleMedium
-            )
+        if (installableCatalog.isNotEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.plugin_catalog_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
 
         items(installableCatalog, key = { "catalog_${it.indexEntry.id}" }) { item ->
@@ -320,25 +335,72 @@ private fun PluginListTab(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(item.indexEntry.name, style = MaterialTheme.typography.titleMedium)
+                        val pluginId = item.indexEntry.id
+                        val isExpanded = expandedDescriptions[pluginId] == true
+                        val showToggle = expandableDescriptions[pluginId] == true
                         Text(
-                            text = item.indexEntry.description.ifBlank { item.indexEntry.id },
+                            text = item.indexEntry.description.ifBlank { pluginId },
                             style = MaterialTheme.typography.bodySmall,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                            overflow = TextOverflow.Ellipsis,
+                            onTextLayout = { textLayoutResult ->
+                                if (!isExpanded) {
+                                    expandableDescriptions[pluginId] = textLayoutResult.hasVisualOverflow
+                                }
+                            }
                         )
+                        if (showToggle) {
+                            TextButton(
+                                onClick = {
+                                    expandedDescriptions[pluginId] = !isExpanded
+                                },
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (isExpanded) {
+                                        stringResource(R.string.plugin_desc_collapse)
+                                    } else {
+                                        stringResource(R.string.plugin_desc_expand)
+                                    }
+                                )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     val installedVersion = item.installed?.state?.version
+                    val shouldUpdate = item.hasUpgrade
                     val actionText = when {
                         installedVersion == null -> stringResource(R.string.plugin_install)
-                        item.hasUpgrade -> stringResource(R.string.plugin_upgrade)
+                        shouldUpdate -> stringResource(R.string.plugin_update)
                         else -> stringResource(R.string.plugin_reinstall)
                     }
-                    Button(
-                        onClick = { onInstall(item.indexEntry) },
-                        enabled = !isWorking
-                    ) {
-                        Text(actionText)
+                    val progress = installProgress[item.indexEntry.id]
+                    if (progress != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .padding(4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    } else {
+                        Button(
+                            onClick = {
+                                if (shouldUpdate) {
+                                    onUpdate(item.indexEntry.id)
+                                } else {
+                                    onInstall(item.indexEntry)
+                                }
+                            },
+                            enabled = !isWorking
+                        ) {
+                            Text(actionText)
+                        }
                     }
                 }
             }
@@ -411,6 +473,7 @@ private fun SourceManageTab(
 
 @Composable
 private fun LogsTab(
+    status: String?,
     logs: List<String>,
     onClear: () -> Unit
 ) {
@@ -418,6 +481,16 @@ private fun LogsTab(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.plugin_status_prefix, status ?: "-"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                )
+            }
+        }
+
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),

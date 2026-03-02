@@ -92,8 +92,11 @@ private fun TerminalCommandPluginPage(
         )
         OutlinedButton(
             onClick = {
+                val startupCommand = PluginRuntime
+                    .resolveTerminalStartupCommand(pluginId, terminal.command)
+                    .getOrElse { terminal.command }
                 val intent = Intent(context, TerminalActivity::class.java)
-                    .putExtra("startup_command", terminal.command)
+                    .putExtra("startup_command", startupCommand)
                 context.startActivity(intent)
             }
         ) {
@@ -569,6 +572,11 @@ private class PluginWebBridge(
     fun frida(script: String): String {
         return PluginRuntime.runFridaScript(pluginId, script)
             .getOrElse { "Error: ${it.message}" }
+    }
+
+    @JavascriptInterface
+    fun systemLanguage(): String {
+        return PluginRuntime.getSystemLanguageTag()
     }
 }
 

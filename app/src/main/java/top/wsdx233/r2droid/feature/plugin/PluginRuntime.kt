@@ -12,6 +12,7 @@ import top.wsdx233.r2droid.util.R2PipeManager
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -142,6 +143,18 @@ object PluginRuntime {
         executeFridaScript(context, script)
     }
 
+    fun getSystemLanguageTag(): String {
+        val locale = Locale.getDefault()
+        return locale.toLanguageTag()
+            .ifBlank { locale.toString().replace('_', '-') }
+            .ifBlank { "en" }
+    }
+
+    fun resolveTerminalStartupCommand(pluginId: String, rawCommand: String): Result<String> = runCatching {
+        val context = createContext(pluginId)
+        applyTerminalCommandPlaceholders(rawCommand, context.installDir)
+    }
+
     private fun createContext(pluginId: String): RunContext {
         val installed = PluginManager.findInstalledPlugin(pluginId)
             ?: error("plugin not installed: $pluginId")
@@ -233,6 +246,10 @@ object PluginRuntime {
                     File(context.installDir, "data").apply { mkdirs() }.absolutePath
                 }
 
+                function<String>("systemLanguage") { _ ->
+                    getSystemLanguageTag()
+                }
+
                 function<String, String>("httpGet") { url ->
                     requirePermission(context, Permission.NETWORK)
                     httpRequest("GET", url, "", "")
@@ -310,7 +327,8 @@ object PluginRuntime {
     }
 
     private fun startProcess(context: RunContext, sessionId: String, commandLine: String): String {
-        val parts = splitCommandLine(commandLine)
+        val resolvedCommandLine = applyTerminalCommandPlaceholders(commandLine, context.installDir)
+        val parts = splitCommandLine(resolvedCommandLine)
         require(parts.isNotEmpty()) { "empty command" }
 
         val key = processKey(context.pluginId, sessionId)
@@ -443,6 +461,15 @@ object PluginRuntime {
     }
 
     private fun processKey(pluginId: String, sessionId: String): String = "$pluginId#$sessionId"
+
+    private fun applyTerminalCommandPlaceholders(commandLine: String, installDir: File): String {
+        val pluginDir = installDir.absolutePath
+        return commandLine
+            .replace("{{plugin_dir}}", pluginDir, ignoreCase = true)
+            .replace("${'$'}{plugin_dir}", pluginDir, ignoreCase = true)
+            .replace("%PLUGIN_DIR%", pluginDir, ignoreCase = true)
+            .replace("${'$'}PLUGIN_DIR", pluginDir)
+    }
 
     private fun splitCommandLine(commandLine: String): List<String> {
         val regex = Regex("""[^"]\S*|".+?"|'[^']*'""")

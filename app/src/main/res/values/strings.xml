@@ -612,6 +612,7 @@
     <string name="plugin_catalog_title">Catalog</string>
     <string name="plugin_install">Install</string>
     <string name="plugin_upgrade">Upgrade</string>
+    <string name="plugin_update">Update</string>
     <string name="plugin_reinstall">Reinstall</string>
     <string name="plugin_uninstall">Uninstall</string>
     <string name="plugin_installed_title">Installed</string>
@@ -623,6 +624,8 @@
     <string name="plugin_tab_plugins">Plugins</string>
     <string name="plugin_tab_sources">Sources</string>
     <string name="plugin_tab_logs">Logs</string>
+    <string name="plugin_desc_expand">Expand description</string>
+    <string name="plugin_desc_collapse">Collapse description</string>
     <string name="features_custom_start_dialog_title">Custom R2 Command</string>
     <string name="features_custom_start_hint">Full command</string>
     <string name="features_custom_start_examples">e.g. r2 -  or  r2 \"frida://attach/pid\"</string>

@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
@@ -58,6 +59,9 @@ object PluginManager {
 
     private val _logs = MutableStateFlow<List<String>>(emptyList())
     val logs = _logs.asStateFlow()
+
+    private val _installProgress = MutableStateFlow<Map<String, Float>>(emptyMap())
+    val installProgress = _installProgress.asStateFlow()
 
     fun initialize(context: Context) {
         if (!initialized.compareAndSet(false, true)) return
@@ -117,6 +121,7 @@ object PluginManager {
         ensureInitialized()
         _isWorking.value = true
         _status.value = "Installing ${entry.name}..."
+        updateInstallProgress(entry.id, 0.05f)
         val tempZip = File(tempDir(), "${entry.id}-${System.currentTimeMillis()}.zip")
         val stagedDir = File(tempDir(), "${entry.id}-staged")
         val targetDir = File(packagesDir(), entry.id)
@@ -126,7 +131,10 @@ object PluginManager {
             stagedDir.deleteRecursively()
             backupDir.deleteRecursively()
 
-            downloadFile(entry.downloadUrl, tempZip)
+            downloadFile(entry.downloadUrl, tempZip) { progress ->
+                updateInstallProgress(entry.id, 0.05f + progress * 0.55f)
+            }
+            updateInstallProgress(entry.id, 0.65f)
             val digest = sha256(tempZip)
             if (!digest.equals(entry.sha256, ignoreCase = true)) {
                 throw IllegalStateException("sha256 mismatch: expected=${entry.sha256}, actual=$digest")
@@ -134,6 +142,7 @@ object PluginManager {
 
             stagedDir.mkdirs()
             unzipSafely(tempZip, stagedDir)
+            updateInstallProgress(entry.id, 0.8f)
 
             val manifestFile = File(stagedDir, entry.manifestPath)
             if (!manifestFile.exists()) {
@@ -170,6 +179,7 @@ object PluginManager {
                 installedAt = System.currentTimeMillis()
             )
             writeInstalledStates(states)
+            updateInstallProgress(entry.id, 0.95f)
             reloadInstalledFromDisk()
             runInstallScriptIfPresent(entry.id, reason = "install")
             refreshCatalog()
@@ -189,6 +199,7 @@ object PluginManager {
         }.also {
             tempZip.delete()
             stagedDir.deleteRecursively()
+            clearInstallProgress(entry.id)
             _isWorking.value = false
         }
     }
@@ -646,7 +657,7 @@ object PluginManager {
         }
     }
 
-    private fun downloadFile(url: String, target: File) {
+    private fun downloadFile(url: String, target: File, onProgress: (Float) -> Unit = {}) {
         when {
             url.startsWith("asset://") -> {
                 val path = url.removePrefix("asset://")
@@ -656,6 +667,7 @@ object PluginManager {
                         input.copyTo(output)
                     }
                 }
+                onProgress(1f)
             }
 
             url.startsWith("file://") -> {
@@ -663,11 +675,21 @@ object PluginManager {
                 val source = File(path)
                 require(source.exists()) { "source file not found: $path" }
                 target.parentFile?.mkdirs()
+                val total = source.length().coerceAtLeast(1L)
                 source.inputStream().use { input ->
                     FileOutputStream(target).use { output ->
-                        input.copyTo(output)
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var read: Int
+                        var copied = 0L
+                        while (input.read(buffer).also { read = it } >= 0) {
+                            if (read == 0) continue
+                            output.write(buffer, 0, read)
+                            copied += read
+                            onProgress((copied.toFloat() / total.toFloat()).coerceIn(0f, 1f))
+                        }
                     }
                 }
+                onProgress(1f)
             }
 
             else -> {
@@ -682,11 +704,23 @@ object PluginManager {
                         throw IllegalStateException("download failed: HTTP $code")
                     }
                     target.parentFile?.mkdirs()
+                    val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
                     conn.inputStream.use { input ->
                         FileOutputStream(target).use { output ->
-                            input.copyTo(output)
+                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                            var read: Int
+                            var copied = 0L
+                            while (input.read(buffer).also { read = it } >= 0) {
+                                if (read == 0) continue
+                                output.write(buffer, 0, read)
+                                copied += read
+                                if (total > 0L) {
+                                    onProgress((copied.toFloat() / total.toFloat()).coerceIn(0f, 1f))
+                                }
+                            }
                         }
                     }
+                    onProgress(1f)
                 } finally {
                     conn.disconnect()
                 }
@@ -807,6 +841,18 @@ object PluginManager {
             _logs.value = next.takeLast(300)
         } else {
             _logs.value = next
+        }
+    }
+
+    private fun updateInstallProgress(pluginId: String, progress: Float) {
+        _installProgress.update { current ->
+            current + (pluginId to progress.coerceIn(0f, 1f))
+        }
+    }
+
+    private fun clearInstallProgress(pluginId: String) {
+        _installProgress.update { current ->
+            if (pluginId !in current) current else current - pluginId
         }
     }
 
