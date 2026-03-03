@@ -10,7 +10,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import top.wsdx233.r2droid.R
-import top.wsdx233.r2droid.activity.MainActivity
 
 class KeepAliveService : Service() {
 
@@ -50,9 +49,13 @@ class KeepAliveService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+        }
         val pi = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
+            this,
+            0,
+            launchIntent,
             PendingIntent.FLAG_IMMUTABLE
         )
         val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
