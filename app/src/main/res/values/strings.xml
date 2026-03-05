@@ -48,6 +48,7 @@
     <string name="project_exit_title">Exit without saving?</string>
     <string name="project_exit_message">You have an unsaved analysis session. Would you like to save it as a project before exiting?</string>
     <string name="project_exit_save">Save</string>
+    <string name="project_exit_minimize">Minimize</string>
     <string name="project_exit_discard">Discard</string>
     <string name="project_exit_update_title">Exit without updating?</string>
     <string name="project_exit_update_message">You have unsaved changes since the last save. Would you like to update the project before exiting?</string>

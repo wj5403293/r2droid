@@ -278,13 +278,27 @@ fun ProjectScreen(
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showExitDialog = false
-                        onNavigateBack()
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            showExitDialog = false
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_minimize))
                     }
-                ) {
-                    Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_discard))
+
+                    TextButton(
+                        onClick = {
+                            showExitDialog = false
+                            drawerScope.launch {
+                                activeSessionId?.let { R2PipeManager.closeSession(it) }
+                                onNavigateBack()
+                            }
+                        }
+                    ) {
+                        Text(stringResource(top.wsdx233.r2droid.R.string.project_exit_discard))
+                    }
                 }
             }
         )
