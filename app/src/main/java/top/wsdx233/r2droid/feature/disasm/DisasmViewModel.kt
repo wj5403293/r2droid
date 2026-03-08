@@ -186,7 +186,9 @@ class DisasmViewModel @Inject constructor(
     val debugBackend: StateFlow<top.wsdx233.r2droid.feature.debug.data.DebugBackend> = _debugBackend.asStateFlow()
 
     fun setDebugBackend(backend: top.wsdx233.r2droid.feature.debug.data.DebugBackend) {
-        _debugBackend.value = backend
+        if (_debugStatus.value == DebugStatus.IDLE) {
+            _debugBackend.value = backend
+        }
     }
 
     // 当前 PC (Program Counter) 地址
@@ -204,6 +206,14 @@ class DisasmViewModel @Inject constructor(
     // 调试器状态
     private val _debugStatus = MutableStateFlow(DebugStatus.IDLE)
     val debugStatus: StateFlow<DebugStatus> = _debugStatus.asStateFlow()
+
+    private fun clearDebugState() {
+        _pcAddress.value = null
+        _breakpoints.value = emptySet()
+        _registers.value = org.json.JSONObject()
+        _debugStatus.value = DebugStatus.IDLE
+        _disasmCacheVersion.value++
+    }
 
     fun onEvent(event: DisasmEvent) {
         when (event) {
@@ -252,6 +262,7 @@ class DisasmViewModel @Inject constructor(
         _disasmCacheVersion.value = 0
         _scrollTarget.value = null
         _multiSelectState.value = MultiSelectState()
+        clearDebugState()
         currentSessionId = -1
     }
 
@@ -290,12 +301,28 @@ class DisasmViewModel @Inject constructor(
         }
     }
 
-    // 初始化 ESIL 环境
-    fun initEsil() {
+    // 开始调试（根据当前后端自动选择 ESIL / Native / Frida）
+    fun startDebugging() {
         viewModelScope.launch {
-            R2PipeManager.execute("aei; aeim; aeip") // 初始化 ESIL 和内存，并设置当前 PC
-            _debugBackend.value = top.wsdx233.r2droid.feature.debug.data.DebugBackend.ESIL
-            updateDebugState()
+            val backend = _debugBackend.value
+            val result = debuggerRepository.startDebugging(backend)
+            if (result.isSuccess) {
+                updateDebugState()
+            } else {
+                clearDebugState()
+            }
+        }
+    }
+
+    // 兼容旧调用
+    fun initEsil() = startDebugging()
+
+    fun stopDebugging() {
+        if (_debugStatus.value == DebugStatus.RUNNING) return
+
+        viewModelScope.launch {
+            debuggerRepository.stopDebugging(_debugBackend.value)
+            clearDebugState()
         }
     }
 
@@ -317,16 +344,22 @@ class DisasmViewModel @Inject constructor(
     // 调试操作 (Step / Continue)
     fun performDebugAction(action: String) {
         viewModelScope.launch {
+            val previousStatus = _debugStatus.value
             _debugStatus.value = DebugStatus.RUNNING
-            
-            when (action) {
+
+            val result = when (action) {
                 "step" -> debuggerRepository.stepInto(_debugBackend.value)
                 "over" -> debuggerRepository.stepOver(_debugBackend.value)
                 "continue" -> debuggerRepository.continueExecution(_debugBackend.value)
+                else -> Result.failure(IllegalArgumentException("Unknown debug action: $action"))
             }
-            
-            // 阻塞命令返回后，更新状态
-            updateDebugState()
+
+            if (result.isSuccess) {
+                // 阻塞命令返回后，更新状态
+                updateDebugState()
+            } else {
+                _debugStatus.value = previousStatus
+            }
         }
     }
 
@@ -338,12 +371,20 @@ class DisasmViewModel @Inject constructor(
 
     // 获取 PC 和 寄存器更新 UI，并自动滚动到 PC 位置
     suspend fun updateDebugState() {
-        val pc = debuggerRepository.getCurrentPC().getOrNull()
+        val backend = _debugBackend.value
+        val pc = debuggerRepository.getCurrentPC(backend).getOrNull()
+        val regs = debuggerRepository.getRegisters(backend).getOrNull()
+
+        if (pc == null && regs == null) {
+            clearDebugState()
+            return
+        }
+
         _pcAddress.value = pc
         _debugStatus.value = DebugStatus.SUSPENDED
-        
-        val regs = debuggerRepository.getRegisters().getOrDefault(org.json.JSONObject())
-        _registers.value = regs
+
+        _registers.value = regs ?: org.json.JSONObject()
+        debuggerRepository.getBreakpoints().getOrNull()?.let { _breakpoints.value = it }
 
         // 自动让反汇编视图滚动到 PC 位置
         if (pc != null) {

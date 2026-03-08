@@ -99,6 +99,9 @@ fun DisassemblyViewer(
     var showDebugSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(debugStatus) {
+        if (debugStatus != top.wsdx233.r2droid.feature.disasm.DebugStatus.IDLE) {
+            showDebugControls = true
+        }
         if (debugStatus == top.wsdx233.r2droid.feature.disasm.DebugStatus.SUSPENDED) {
             showRegisters = true
         }
@@ -471,7 +474,11 @@ fun DisassemblyViewer(
                 Icon(
                     imageVector = Icons.Default.BugReport,
                     contentDescription = "Toggle Debug Controls",
-                    tint = if (showDebugControls) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (showDebugControls || debugStatus != top.wsdx233.r2droid.feature.disasm.DebugStatus.IDLE) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         }
@@ -710,11 +717,13 @@ fun DisassemblyViewer(
         ) {
             DebugControlBar(
                 debugStatus = debugStatus,
-                onInitEsil = { viewModel.initEsil() },
+                debugBackend = debugBackend,
+                onStartDebugging = { viewModel.startDebugging() },
                 onStepInto = { viewModel.performDebugAction("step") },
                 onStepOver = { viewModel.performDebugAction("over") },
                 onContinue = { viewModel.performDebugAction("continue") },
                 onPause = { viewModel.pauseExecution() },
+                onStopDebugging = { viewModel.stopDebugging() },
                 onShowRegisters = { showRegisters = true },
                 onSettings = { showDebugSettings = true }
             )

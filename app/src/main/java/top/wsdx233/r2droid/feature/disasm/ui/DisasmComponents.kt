@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import top.wsdx233.r2droid.core.data.model.DisasmInstruction
+import top.wsdx233.r2droid.feature.debug.data.DebugBackend
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
 import top.wsdx233.r2droid.ui.theme.LocalDarkTheme
 
@@ -488,11 +490,13 @@ fun DisasmRow(
 fun DebugControlBar(
     modifier: Modifier = Modifier,
     debugStatus: top.wsdx233.r2droid.feature.disasm.DebugStatus,
-    onInitEsil: () -> Unit,
+    debugBackend: DebugBackend,
+    onStartDebugging: () -> Unit,
     onStepInto: () -> Unit,
     onStepOver: () -> Unit,
     onContinue: () -> Unit,
     onPause: () -> Unit,
+    onStopDebugging: () -> Unit,
     onShowRegisters: () -> Unit = {},
     onSettings: () -> Unit = {}
 ) {
@@ -506,9 +510,19 @@ fun DebugControlBar(
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(
+                text = when (debugBackend) {
+                    DebugBackend.ESIL -> "ESIL"
+                    DebugBackend.NATIVE_GDB -> "Native GDB"
+                    DebugBackend.FRIDA -> "Frida"
+                },
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+
             if (debugStatus == top.wsdx233.r2droid.feature.disasm.DebugStatus.IDLE) {
-                IconButton(onClick = onInitEsil) {
-                    Icon(Icons.Default.PowerSettingsNew, "Init ESIL")
+                IconButton(onClick = onStartDebugging) {
+                    Icon(Icons.Default.PowerSettingsNew, "Start Debug")
                 }
             } else {
                 if (debugStatus == top.wsdx233.r2droid.feature.disasm.DebugStatus.RUNNING) {
@@ -528,9 +542,12 @@ fun DebugControlBar(
                     IconButton(onClick = onShowRegisters) {
                         Icon(Icons.AutoMirrored.Filled.List, "Show Registers")
                     }
+                    IconButton(onClick = onStopDebugging) {
+                        Icon(Icons.Default.Close, "Close Debug")
+                    }
                 }
             }
-            if (debugStatus != top.wsdx233.r2droid.feature.disasm.DebugStatus.RUNNING) {
+            if (debugStatus == top.wsdx233.r2droid.feature.disasm.DebugStatus.IDLE) {
                 IconButton(onClick = onSettings) {
                     Icon(Icons.Default.Settings, "Debug Settings")
                 }
