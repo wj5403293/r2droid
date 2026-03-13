@@ -1,0 +1,78 @@
+{
+  "template": "## 📋 更新日志",
+  "empty_template": "## 📋 更新日志",
+  "categories": [
+    {
+      "title": "## ✨ 新功能",
+      "labels": ["feat", "feature"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 🐛 修复",
+      "labels": ["fix", "bug"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## ⚡ 性能优化",
+      "labels": ["perf"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## ♻️ 重构",
+      "labels": ["refactor"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 📚 文档",
+      "labels": ["docs"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 🔧 构建与 CI",
+      "labels": ["build", "ci"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 🚀 发布与维护",
+      "labels": ["chore", "style", "test", "release", "revert"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 🔀 合并",
+      "labels": ["merge"],
+      "mode": "COMMIT"
+    },
+    {
+      "title": "## 📦 其他更新",
+      "labels": [],
+      "mode": "COMMIT"
+    }
+  ],
+  "commit_template": "- #{{TITLE}}",
+  "label_extractor": [
+    {
+      "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\\([\\w\\-\\.]+\\))?(!)?[:：]\\s*([\\s\\S]+)$",
+      "target": "$1",
+      "on_property": "title",
+      "flags": "giu"
+    },
+    {
+      "pattern": "^(minor\\s+fix|bugfix|hotfix)([:：\\s-].*)?$",
+      "target": "fix",
+      "on_property": "title",
+      "flags": "giu"
+    },
+    {
+      "pattern": "^(修改版本号准备发布|准备发布|release[:：\\s-]?|发布[:：\\s-]?)([\\s\\S]*)$",
+      "target": "release",
+      "on_property": "title",
+      "flags": "giu"
+    },
+    {
+      "pattern": "^(merge pull request|merge branch).*$",
+      "target": "merge",
+      "on_property": "title",
+      "flags": "giu"
+    }
+  ]
+}
