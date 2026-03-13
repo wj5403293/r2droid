@@ -76,8 +76,10 @@ class MainActivity : ComponentActivity() {
         }
 
         // 启动时自动检查更新（静默失败）
-        lifecycleScope.launch {
-            top.wsdx233.r2droid.util.UpdateManager.checkForUpdateSilently(applicationContext)
+        if (SettingsManager.autoCheckUpdates) {
+            lifecycleScope.launch {
+                top.wsdx233.r2droid.util.UpdateManager.checkForUpdateSilently(applicationContext)
+            }
         }
 
         // 处理外部 Intent 传入的文件 URI
@@ -174,7 +176,11 @@ fun MainAppContent(
     updateInfo?.let { update ->
         top.wsdx233.r2droid.core.ui.dialogs.UpdateDialog(
             updateInfo = update,
-            onDismiss = { top.wsdx233.r2droid.util.UpdateManager.clearUpdateInfo() }
+            onDismiss = { top.wsdx233.r2droid.util.UpdateManager.clearUpdateInfo() },
+            onDisableAutoCheck = {
+                SettingsManager.autoCheckUpdates = false
+                top.wsdx233.r2droid.util.UpdateManager.clearUpdateInfo()
+            }
         )
     }
 

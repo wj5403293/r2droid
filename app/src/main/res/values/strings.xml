@@ -525,6 +525,12 @@
     <string name="update_later">Later</string>
     <string name="update_no_update">You are using the latest version</string>
     <string name="update_check_failed">Failed to check for updates</string>
+    <string name="settings_auto_check_updates">Auto Check for Updates</string>
+    <string name="settings_auto_check_updates_desc">Automatically check for updates when the app starts</string>
+    <string name="update_disable_auto_check">Don’t remind me again</string>
+    <string name="update_disable_confirm_title">Disable automatic update checks?</string>
+    <string name="update_disable_confirm_message">After disabling, the app will no longer automatically check for updates on startup. You can turn this back on later in Settings.</string>
+    <string name="update_disable_confirm_action">Disable</string>
 
     <!-- AI Chat -->
     <string name="proj_category_ai">AI</string>

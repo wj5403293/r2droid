@@ -527,6 +527,12 @@
     <string name="update_later">稍后</string>
     <string name="update_no_update">您正在使用最新版本</string>
     <string name="update_check_failed">检查更新失败</string>
+    <string name="settings_auto_check_updates">自动检测更新</string>
+    <string name="settings_auto_check_updates_desc">在应用启动时自动检查是否有新版本</string>
+    <string name="update_disable_auto_check">不再提示</string>
+    <string name="update_disable_confirm_title">关闭自动检测更新？</string>
+    <string name="update_disable_confirm_message">关闭后，应用启动时将不再自动检测更新。您之后仍可在设置中重新开启。</string>
+    <string name="update_disable_confirm_action">确认关闭</string>
 
     <!-- AI Chat -->
     <string name="proj_category_ai">AI</string>

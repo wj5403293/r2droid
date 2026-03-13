@@ -33,15 +33,20 @@ object SettingsManager {
     private const val KEY_ANALYSIS_BENCHMARK_SCORE = "analysis_benchmark_score"
     private const val KEY_ANALYSIS_BENCHMARK_AT = "analysis_benchmark_at"
     private const val KEY_DEFAULT_JUMP_TARGET = "default_jump_target"
+    private const val KEY_AUTO_CHECK_UPDATES = "auto_check_updates"
 
     private lateinit var prefs: SharedPreferences
 
     private val _darkModeFlow = MutableStateFlow("system")
     val darkModeFlow = _darkModeFlow.asStateFlow()
 
+    private val _autoCheckUpdatesFlow = MutableStateFlow(true)
+    val autoCheckUpdatesFlow = _autoCheckUpdatesFlow.asStateFlow()
+
     fun initialize(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         _darkModeFlow.value = prefs.getString(KEY_DARK_MODE, "system") ?: "system"
+        _autoCheckUpdatesFlow.value = prefs.getBoolean(KEY_AUTO_CHECK_UPDATES, true)
     }
 
     var r2rcPath: String?
@@ -174,4 +179,11 @@ object SettingsManager {
     var defaultJumpTarget: String
         get() = prefs.getString(KEY_DEFAULT_JUMP_TARGET, "ask") ?: "ask"
         set(value) { prefs.edit { putString(KEY_DEFAULT_JUMP_TARGET, value) } }
+
+    var autoCheckUpdates: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_CHECK_UPDATES, true)
+        set(value) {
+            prefs.edit { putBoolean(KEY_AUTO_CHECK_UPDATES, value) }
+            _autoCheckUpdatesFlow.value = value
+        }
 }

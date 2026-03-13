@@ -19,9 +19,11 @@ import top.wsdx233.r2droid.util.UpdateManager
 @Composable
 fun UpdateDialog(
     updateInfo: UpdateInfo,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDisableAutoCheck: () -> Unit
 ) {
     val context = LocalContext.current
+    val showDisableConfirm = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -62,14 +64,19 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl))
-                    context.startActivity(intent)
-                    onDismiss()
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { showDisableConfirm.value = true }) {
+                    Text(stringResource(R.string.update_disable_auto_check))
                 }
-            ) {
-                Text(stringResource(R.string.update_download))
+                TextButton(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl))
+                        context.startActivity(intent)
+                        onDismiss()
+                    }
+                ) {
+                    Text(stringResource(R.string.update_download))
+                }
             }
         },
         dismissButton = {
@@ -78,4 +85,27 @@ fun UpdateDialog(
             }
         }
     )
+
+    if (showDisableConfirm.value) {
+        AlertDialog(
+            onDismissRequest = { showDisableConfirm.value = false },
+            title = { Text(stringResource(R.string.update_disable_confirm_title)) },
+            text = { Text(stringResource(R.string.update_disable_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDisableConfirm.value = false
+                        onDisableAutoCheck()
+                    }
+                ) {
+                    Text(stringResource(R.string.update_disable_confirm_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableConfirm.value = false }) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+            }
+        )
+    }
 }

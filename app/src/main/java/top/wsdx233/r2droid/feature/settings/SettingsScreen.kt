@@ -110,6 +110,9 @@ class SettingsViewModel : ViewModel() {
     private val _keepAlive = MutableStateFlow(SettingsManager.keepAliveNotification)
     val keepAlive = _keepAlive.asStateFlow()
 
+    private val _autoCheckUpdates = MutableStateFlow(SettingsManager.autoCheckUpdates)
+    val autoCheckUpdates = _autoCheckUpdates.asStateFlow()
+
     // Initialize r2rc content
     fun loadR2rcContent(context: Context) {
         _r2rcContent.value = SettingsManager.getR2rcContent(context)
@@ -240,6 +243,11 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
+    fun setAutoCheckUpdates(value: Boolean) {
+        SettingsManager.autoCheckUpdates = value
+        _autoCheckUpdates.value = value
+    }
+
     fun resetAll(context: Context) {
         SettingsManager.fontPath = null
         SettingsManager.language = "system"
@@ -251,6 +259,7 @@ class SettingsViewModel : ViewModel() {
         SettingsManager.decompilerDefault = "r2ghidra"
         SettingsManager.maxLogEntries = 100
         SettingsManager.keepAliveNotification = true
+        SettingsManager.autoCheckUpdates = true
         SettingsManager.menuAtTouch = true
         SettingsManager.aiEnabled = true
         SettingsManager.aiOutputTruncateLimit = 100000
@@ -267,6 +276,7 @@ class SettingsViewModel : ViewModel() {
         _decompilerDefault.value = "r2ghidra"
         _maxLogEntries.value = 100
         _keepAlive.value = true
+        _autoCheckUpdates.value = true
         _menuAtTouch.value = true
         _aiEnabled.value = true
         _aiOutputTruncateLimit.value = 100000
@@ -293,6 +303,7 @@ fun SettingsScreen(
     val decompilerDefault by viewModel.decompilerDefault.collectAsState()
     val maxLogEntries by viewModel.maxLogEntries.collectAsState()
     val keepAlive by viewModel.keepAlive.collectAsState()
+    val autoCheckUpdates by viewModel.autoCheckUpdates.collectAsState()
     val menuAtTouch by viewModel.menuAtTouch.collectAsState()
     val aiEnabled by viewModel.aiEnabled.collectAsState()
     val aiOutputTruncateLimit by viewModel.aiOutputTruncateLimit.collectAsState()
@@ -616,6 +627,15 @@ fun SettingsScreen(
             item {
                 HorizontalDivider()
                 SettingsSectionHeader(stringResource(R.string.settings_about))
+            }
+
+            item {
+                SettingsToggleItem(
+                    title = stringResource(R.string.settings_auto_check_updates),
+                    subtitle = stringResource(R.string.settings_auto_check_updates_desc),
+                    checked = autoCheckUpdates,
+                    onCheckedChange = { viewModel.setAutoCheckUpdates(it) }
+                )
             }
 
             item {

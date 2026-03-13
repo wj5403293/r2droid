@@ -517,6 +517,12 @@
     <string name="update_later">Позже</string>
     <string name="update_no_update">У вас установлена последняя версия</string>
     <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="settings_auto_check_updates">Автопроверка обновлений</string>
+    <string name="settings_auto_check_updates_desc">Автоматически проверять обновления при запуске приложения</string>
+    <string name="update_disable_auto_check">Больше не напоминать</string>
+    <string name="update_disable_confirm_title">Отключить автопроверку обновлений?</string>
+    <string name="update_disable_confirm_message">После отключения приложение больше не будет автоматически проверять обновления при запуске. Позже это можно снова включить в настройках.</string>
+    <string name="update_disable_confirm_action">Отключить</string>
 
     <!-- AI Chat -->
     <string name="proj_category_ai">ИИ</string>
