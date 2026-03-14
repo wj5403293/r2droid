@@ -1023,6 +1023,55 @@ class ProjectViewModel @Inject constructor(
         jumpToAddress(addr)
     }
 
+    fun jumpToGraphNode(node: GraphNode) {
+        val current = _uiState.value as? ProjectUiState.Success ?: return
+
+        if (current.graphType == GraphType.FunctionFlow && node.address != 0L) {
+            jumpToAddress(node.address)
+            return
+        }
+
+        viewModelScope.launch {
+            val resolvedAddress = resolveGraphNodeAddress(node, current.graphType)
+            if (resolvedAddress != 0L) {
+                jumpToAddress(resolvedAddress)
+            }
+        }
+    }
+
+    private suspend fun resolveGraphNodeAddress(node: GraphNode, graphType: GraphType): Long {
+        val candidates = linkedSetOf<String>()
+        node.title.trim().takeIf { it.isNotEmpty() }?.let { candidates.add(it) }
+        node.body.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { candidates.add(it) }
+
+        if (graphType != GraphType.FunctionFlow) {
+            for (candidate in candidates) {
+                val resolved = repository.resolveExpression("[$candidate]").getOrNull() ?: 0L
+                if (resolved != 0L) return resolved
+            }
+        }
+
+        if (node.address != 0L) return node.address
+
+        extractAddressFromText(node.title)?.let { return it }
+        extractAddressFromText(node.body)?.let { return it }
+
+        for (candidate in candidates) {
+            val resolved = repository.resolveFunctionAddress(candidate)
+            if (resolved != 0L) return resolved
+        }
+
+        return 0L
+    }
+
+    private fun extractAddressFromText(text: String): Long? {
+        val match = Regex("0x([0-9a-fA-F]+)").find(text) ?: return null
+        return match.groupValues.getOrNull(1)?.toLongOrNull(16)
+    }
+
     fun loadGraph(graphType: GraphType) {
         val current = _uiState.value as? ProjectUiState.Success ?: return
 

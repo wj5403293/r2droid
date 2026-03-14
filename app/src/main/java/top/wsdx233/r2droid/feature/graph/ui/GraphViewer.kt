@@ -31,6 +31,7 @@ import top.wsdx233.r2droid.R
 import top.wsdx233.r2droid.core.data.model.GraphBlockInstruction
 import top.wsdx233.r2droid.core.data.model.GraphData
 import top.wsdx233.r2droid.core.data.model.GraphNode
+import top.wsdx233.r2droid.feature.project.GraphType
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -273,7 +274,28 @@ private fun displayInstrCount(node: GraphNode): Int {
     return if (total > MAX_INSTRUCTIONS_PER_NODE) MAX_INSTRUCTIONS_PER_NODE + 1 else total
 }
 
-private fun nodeWidth(node: GraphNode): Float {
+private fun usesStructuredNodeLayout(graphType: GraphType): Boolean = graphType == GraphType.FunctionFlow
+
+private fun singleNodeLines(node: GraphNode): List<String> {
+    val title = node.title.ifBlank {
+        node.address.takeIf { it != 0L }?.let { "0x%X".format(it) }.orEmpty()
+    }
+    val lines = buildList {
+        if (title.isNotBlank()) add(title)
+        node.body.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { add(it) }
+    }
+    return if (lines.isNotEmpty()) lines else listOf("0x%X".format(node.address))
+}
+
+private fun nodeWidth(node: GraphNode, structuredNodeLayout: Boolean): Float {
+    if (!structuredNodeLayout) {
+        val maxLineLen = singleNodeLines(node).maxOfOrNull { it.length * CHAR_WIDTH_APPROX } ?: 0f
+        return max(NODE_MIN_WIDTH, maxLineLen + NODE_PADDING * 2)
+    }
+
     val titleLen = node.title.length * CHAR_WIDTH_APPROX + NODE_PADDING * 2
     val instrs = node.instructions.take(MAX_INSTRUCTIONS_PER_NODE)
     val maxInstrLen = instrs.maxOfOrNull {
@@ -282,13 +304,19 @@ private fun nodeWidth(node: GraphNode): Float {
     return max(NODE_MIN_WIDTH, max(titleLen, maxInstrLen + NODE_PADDING * 2))
 }
 
-private fun nodeHeight(node: GraphNode): Float {
+private fun nodeHeight(node: GraphNode, structuredNodeLayout: Boolean): Float {
+    if (!structuredNodeLayout) {
+        return NODE_PADDING * 2 + singleNodeLines(node).size.coerceAtLeast(1) * INSTR_LINE_HEIGHT
+    }
+
     val lines = if (node.instructions.isNotEmpty()) displayInstrCount(node) else if (node.body.isNotEmpty()) 1 else 0
     return NODE_TITLE_HEIGHT + lines * INSTR_LINE_HEIGHT + NODE_PADDING
 }
 
-fun layoutGraph(data: GraphData): GraphLayoutResult {
+fun layoutGraph(data: GraphData, graphType: GraphType): GraphLayoutResult {
     if (data.nodes.isEmpty()) return GraphLayoutResult(emptyList(), emptyList())
+
+    val structuredNodeLayout = usesStructuredNodeLayout(graphType)
 
     val nodeById = data.nodes.associateBy { it.id }
     val allIds = data.nodes.map { it.id }.toSet()
@@ -351,8 +379,8 @@ fun layoutGraph(data: GraphData): GraphLayoutResult {
     val nodeH = mutableMapOf<Int, Float>()
     allIds.forEach { id ->
         val node = nodeById[id]!!
-        nodeW[id] = nodeWidth(node)
-        nodeH[id] = nodeHeight(node)
+        nodeW[id] = nodeWidth(node, structuredNodeLayout)
+        nodeH[id] = nodeHeight(node, structuredNodeLayout)
     }
 
     val nodeX = mutableMapOf<Int, Float>()
@@ -420,16 +448,19 @@ fun layoutGraph(data: GraphData): GraphLayoutResult {
 @Composable
 fun GraphViewer(
     graphData: GraphData,
+    graphType: GraphType,
     cursorAddress: Long,
     scrollToSelectionTrigger: StateFlow<Int>,
     onAddressClick: (Long) -> Unit,
+    onNodeClick: (GraphNode) -> Unit = {},
     onShowXrefs: (Long) -> Unit = {},
     onShowInstructionDetail: (Long) -> Unit = {},
     initialScale: Float = 1f,
     onScaleChanged: (Float) -> Unit = {}
 ) {
     val density = LocalDensity.current
-    val layoutResult = remember(graphData) { layoutGraph(graphData) }
+    val structuredNodeLayout = remember(graphType) { usesStructuredNodeLayout(graphType) }
+    val layoutResult = remember(graphData, graphType) { layoutGraph(graphData, graphType) }
     val layoutNodes = layoutResult.nodes
 
     val highlightNodeId = remember(layoutNodes, cursorAddress) {
@@ -488,8 +519,7 @@ fun GraphViewer(
     var menuVisible by remember { mutableStateOf(false) }
     var menuPosition by remember { mutableStateOf(DpOffset.Zero) }
     var menuInstr by remember { mutableStateOf<GraphBlockInstruction?>(null) }
-    var menuNodeTitle by remember { mutableStateOf("") }
-    var menuNodeAddress by remember { mutableLongStateOf(0L) }
+    var menuNode by remember { mutableStateOf<GraphNode?>(null) }
     val context = LocalContext.current
 
     val textPaint = remember {
@@ -544,13 +574,12 @@ fun GraphViewer(
 
                         for (ln in layoutNodes) {
                             if (ln.rect.contains(Offset(gx, gy))) {
-                                if (ln.node.instructions.isNotEmpty()) {
+                                if (structuredNodeLayout && ln.node.instructions.isNotEmpty()) {
                                     val visibleInstrs = ln.node.instructions.take(MAX_INSTRUCTIONS_PER_NODE)
                                     for ((idx, instr) in visibleInstrs.withIndex()) {
                                         if (ln.instrRect(idx).contains(Offset(gx, gy))) {
                                             menuInstr = instr
-                                            menuNodeTitle = ln.node.title
-                                            menuNodeAddress = ln.node.address
+                                            menuNode = ln.node
                                             menuPosition = with(density) { DpOffset(tapOffset.x.toDp(), tapOffset.y.toDp()) }
                                             menuVisible = true
                                             return@detectTapGestures
@@ -558,8 +587,7 @@ fun GraphViewer(
                                     }
                                 }
                                 menuInstr = null
-                                menuNodeTitle = ln.node.title
-                                menuNodeAddress = ln.node.address
+                                menuNode = ln.node
                                 menuPosition = with(density) { DpOffset(tapOffset.x.toDp(), tapOffset.y.toDp()) }
                                 menuVisible = true
                                 return@detectTapGestures
@@ -580,7 +608,7 @@ fun GraphViewer(
 
                 for (ln in layoutNodes) {
                     val isHighlighted = ln.node.id == highlightNodeId
-                    drawNode(ln, textPaint, titlePaint, addrPaint, density.density, isHighlighted, cursorAddress)
+                    drawNode(ln, textPaint, titlePaint, addrPaint, density.density, structuredNodeLayout, isHighlighted, cursorAddress)
                 }
             }
         }
@@ -605,9 +633,22 @@ fun GraphViewer(
                 DropdownMenuItem(text = { Text(stringResource(R.string.menu_graph_xrefs)) }, onClick = { menuVisible = false; onShowXrefs(instr.addr) })
                 DropdownMenuItem(text = { Text(stringResource(R.string.menu_graph_detail)) }, onClick = { menuVisible = false; onShowInstructionDetail(instr.addr) })
             } else {
-                DropdownMenuItem(text = { Text(stringResource(R.string.menu_jump) + " → $menuNodeTitle") }, onClick = { menuVisible = false })
-                if (menuNodeAddress != 0L) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.menu_graph_xrefs)) }, onClick = { menuVisible = false; onShowXrefs(menuNodeAddress) })
+                val node = menuNode
+                if (node != null) {
+                    val nodeLabel = node.title.ifBlank { "0x%X".format(node.address) }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.menu_jump) + " → $nodeLabel") },
+                        onClick = {
+                            menuVisible = false
+                            onNodeClick(node)
+                        }
+                    )
+                    if (node.address != 0L) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_graph_xrefs)) },
+                            onClick = { menuVisible = false; onShowXrefs(node.address) }
+                        )
+                    }
                 }
             }
         }
@@ -663,6 +704,7 @@ private fun DrawScope.drawNode(
     titlePaint: android.graphics.Paint,
     addrPaint: android.graphics.Paint,
     density: Float,
+    structuredNodeLayout: Boolean,
     isHighlighted: Boolean = false,
     cursorAddress: Long = 0L
 ) {
@@ -674,6 +716,27 @@ private fun DrawScope.drawNode(
         size = Size(ln.width, ln.height),
         cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius)
     )
+
+    if (!structuredNodeLayout) {
+        drawRoundRect(
+            color = if (isHighlighted) nodeHighlightBorderColor else nodeBorderColor,
+            topLeft = Offset(ln.x, ln.y),
+            size = Size(ln.width, ln.height),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius),
+            style = Stroke(width = if (isHighlighted) 2.5f else 1f)
+        )
+
+        val lines = singleNodeLines(ln.node)
+        val canvas = drawContext.canvas.nativeCanvas
+        val totalTextHeight = lines.size * INSTR_LINE_HEIGHT
+        val startY = ln.y + (ln.height - totalTextHeight) / 2f + INSTR_LINE_HEIGHT / 2f + titlePaint.textSize / 3f
+
+        lines.forEachIndexed { index, line ->
+            val paint = if (index == 0) titlePaint else textPaint
+            canvas.drawText(line, ln.x + NODE_PADDING, startY + index * INSTR_LINE_HEIGHT, paint)
+        }
+        return
+    }
 
     drawRoundRect(
         color = nodeTitleBgColor,

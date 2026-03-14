@@ -137,6 +137,7 @@ fun ProjectDetailView(
                     viewModel.onEvent(ProjectEvent.LoadGraph(type))
                 },
                 onAddressClick = { addr -> viewModel.onEvent(ProjectEvent.JumpToAddress(addr)) },
+                onNodeClick = { node -> viewModel.jumpToGraphNode(node) },
                 onShowXrefs = { addr -> disasmViewModel.onEvent(DisasmEvent.FetchXrefs(addr)) },
                 onShowInstructionDetail = { addr -> disasmViewModel.onEvent(DisasmEvent.FetchInstructionDetail(addr)) }
             )

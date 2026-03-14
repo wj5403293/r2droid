@@ -52,6 +52,7 @@ fun GraphScreen(
     scrollToSelectionTrigger: StateFlow<Int>,
     onGraphTypeSelected: (GraphType) -> Unit,
     onAddressClick: (Long) -> Unit,
+    onNodeClick: (top.wsdx233.r2droid.core.data.model.GraphNode) -> Unit = {},
     onShowXrefs: (Long) -> Unit = {},
     onShowInstructionDetail: (Long) -> Unit = {}
 ) {
@@ -96,9 +97,11 @@ fun GraphScreen(
                 else -> {
                     GraphViewer(
                         graphData = graphData,
+                        graphType = currentGraphType,
                         cursorAddress = cursorAddress,
                         scrollToSelectionTrigger = scrollToSelectionTrigger,
                         onAddressClick = onAddressClick,
+                        onNodeClick = onNodeClick,
                         onShowXrefs = onShowXrefs,
                         onShowInstructionDetail = onShowInstructionDetail,
                         initialScale = persistedScale,

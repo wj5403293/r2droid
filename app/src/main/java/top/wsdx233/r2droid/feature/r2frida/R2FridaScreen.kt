@@ -60,6 +60,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -398,6 +401,19 @@ private fun StatusCard(
 
 private data class FridaProcess(val pid: String, val name: String)
 
+private enum class FridaConnectMode(val scheme: String) {
+    Attach("attach"),
+    Spawn("spawn"),
+    Launch("launch")
+}
+
+private fun buildFridaConnectCommand(
+    mode: FridaConnectMode,
+    host: String,
+    port: String,
+    target: String
+): String = "\"frida://${mode.scheme}/remote/$host:$port/$target\""
+
 private suspend fun fetchFridaProcesses(context: android.content.Context, host: String, port: String): Result<List<FridaProcess>> {
     return withContext(Dispatchers.IO) {
         try {
@@ -448,6 +464,7 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit
 
     var host by remember { mutableStateOf(SettingsManager.fridaHost) }
     var port by remember { mutableStateOf(SettingsManager.fridaPort) }
+    var selectedConnectMode by remember { mutableStateOf(FridaConnectMode.Attach) }
 
     // Remote process list state
     var processes by remember { mutableStateOf<List<FridaProcess>>(emptyList()) }
@@ -528,7 +545,7 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit
                     onClick = {
                         SettingsManager.fridaHost = host
                         SettingsManager.fridaPort = port
-                        onConnect("\"frida://attach/remote/$host:$port/Gadget\"")
+                        onConnect(buildFridaConnectCommand(selectedConnectMode, host, port, "Gadget"))
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(12.dp)
@@ -536,6 +553,22 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit
                     Icon(Icons.Default.FlashOn, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.frida_quick_connect_gadget))
+                }
+            }
+
+            item {
+                val connectModes = FridaConnectMode.entries
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    connectModes.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            selected = selectedConnectMode == mode,
+                            onClick = { selectedConnectMode = mode },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = connectModes.size),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(mode.scheme)
+                        }
+                    }
                 }
             }
 
@@ -579,7 +612,7 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit
                     processes else processes.take(maxCollapsed)
                 items(visibleProcesses, key = { it.pid }) { proc ->
                     ProcessItem(proc) {
-                        onConnect("\"frida://attach/remote/$host:$port/${proc.name}\"")
+                        onConnect(buildFridaConnectCommand(selectedConnectMode, host, port, proc.name))
                     }
                 }
                 if (processes.size > maxCollapsed) {
@@ -645,12 +678,11 @@ private fun R2FridaFeatureScreen(onBack: () -> Unit, onConnect: (String) -> Unit
                 val visibleApps = if (appsExpanded || filtered.size <= maxCollapsedApps)
                     filtered else filtered.take(maxCollapsedApps)
                 items(visibleApps, key = { it.packageName }) { app ->
-                    AppItem(app, pm,
-                        onAttach = {
-                            onConnect("\"frida://attach/remote/$host:$port/${app.packageName}\"")
-                        },
-                        onSpawn = {
-                            onConnect("\"frida://spawn/remote/$host:$port/${app.packageName}\"")
+                    AppItem(
+                        app = app,
+                        pm = pm,
+                        onConnectClick = {
+                            onConnect(buildFridaConnectCommand(selectedConnectMode, host, port, app.packageName))
                         }
                     )
                 }
@@ -771,9 +803,9 @@ private fun RemoteProcessesHeader(loading: Boolean, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun ProcessItem(proc: FridaProcess, onAttach: () -> Unit) {
+private fun ProcessItem(proc: FridaProcess, onConnectClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onAttach),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onConnectClick),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -785,8 +817,8 @@ private fun ProcessItem(proc: FridaProcess, onAttach: () -> Unit) {
                 Text("PID: ${proc.pid}", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledTonalButton(onClick = onAttach, shape = RoundedCornerShape(8.dp)) {
-                Text(stringResource(R.string.frida_attach))
+            FilledTonalButton(onClick = onConnectClick, shape = RoundedCornerShape(8.dp)) {
+                Text("连接")
             }
         }
     }
@@ -796,8 +828,7 @@ private fun ProcessItem(proc: FridaProcess, onAttach: () -> Unit) {
 private fun AppItem(
     app: ApplicationInfo,
     pm: android.content.pm.PackageManager,
-    onAttach: () -> Unit,
-    onSpawn: () -> Unit
+    onConnectClick: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
         Row(
@@ -819,12 +850,8 @@ private fun AppItem(
                 )
             }
             Spacer(Modifier.width(8.dp))
-            FilledTonalButton(onClick = onAttach, shape = RoundedCornerShape(8.dp)) {
-                Text(stringResource(R.string.frida_attach))
-            }
-            Spacer(Modifier.width(6.dp))
-            OutlinedButton(onClick = onSpawn, shape = RoundedCornerShape(8.dp)) {
-                Text(stringResource(R.string.frida_spawn))
+            FilledTonalButton(onClick = onConnectClick, shape = RoundedCornerShape(8.dp)) {
+                Text("连接")
             }
         }
     }
