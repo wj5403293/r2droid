@@ -1240,13 +1240,54 @@ object PluginManager {
               <style>
                 body { font-family: sans-serif; padding: 16px; background: #0d1117; color: #e6edf3; }
                 .card { border: 1px solid #30363d; border-radius: 8px; padding: 12px; }
+                button { margin-top: 12px; padding: 10px 14px; border-radius: 999px; border: none; background: #7c4dff; color: white; cursor: pointer; }
+                code, pre { background: #161b22; border-radius: 6px; padding: 2px 6px; }
+                pre { padding: 12px; white-space: pre-wrap; }
               </style>
             </head>
             <body>
               <div class="card">
                 <h3>$name</h3>
                 <p>Developer plugin scaffold created successfully.</p>
+                <p>Add <code>"android.class"</code> to <code>manifest.json</code> permissions before using Android bridge APIs.</p>
+                <button id="open-settings">Open Android Settings</button>
+                <pre id="output">Waiting for Android bridge…</pre>
               </div>
+              <script>
+                const output = document.getElementById('output');
+                const button = document.getElementById('open-settings');
+
+                function setOutput(message) {
+                  output.textContent = String(message);
+                }
+
+                function installExample() {
+                  if (!window.android || !window.android.__r2droidBridge) {
+                    setOutput('Android bridge not ready yet.');
+                    return;
+                  }
+                  setOutput('Android bridge ready. Click the button to launch Android Settings.');
+                  button.onclick = () => {
+                    try {
+                      const intent = android.getLaunchIntentForPackage('com.android.settings');
+                      if (!intent) {
+                        setOutput('Launch intent for com.android.settings was not found.');
+                        return;
+                      }
+                      android.startActivity(intent);
+                      setOutput('Started com.android.settings');
+                    } catch (error) {
+                      setOutput(error);
+                    }
+                  };
+                }
+
+                if (window.androidBridgeReady) {
+                  installExample();
+                } else {
+                  window.addEventListener('r2pluginready', installExample, { once: true });
+                }
+              </script>
             </body>
             </html>
         """.trimIndent()

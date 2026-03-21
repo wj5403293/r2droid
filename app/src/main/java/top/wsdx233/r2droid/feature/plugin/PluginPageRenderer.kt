@@ -177,7 +177,12 @@ private fun WebViewPluginPage(
                 settings.javaScriptEnabled = true
                 settings.allowFileAccess = true
                 settings.allowContentAccess = false
-                webViewClient = WebViewClient()
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        view?.evaluateJavascript(PluginRuntime.androidBridgeJavascript("R2PluginHost"), null)
+                    }
+                }
                 webChromeClient = WebChromeClient()
                 addJavascriptInterface(bridge, "R2PluginHost")
                 loadUrl(pageFile.toURI().toString())
@@ -678,6 +683,46 @@ private class PluginWebBridge(
     fun projectsInfo(): String {
         return PluginRuntime.listProjectsInfo(pluginId)
             .getOrElse { "Error: ${it.message}" }
+    }
+
+    @JavascriptInterface
+    fun androidImportClass(className: String): String {
+        return PluginRuntime.androidImportClassPayload(pluginId, className)
+    }
+
+    @JavascriptInterface
+    fun androidNew(className: String, argsJson: String): String {
+        return PluginRuntime.androidNewPayload(pluginId, className, argsJson)
+    }
+
+    @JavascriptInterface
+    fun androidCall(refId: String, methodName: String, argsJson: String): String {
+        return PluginRuntime.androidCallPayload(pluginId, refId, methodName, argsJson)
+    }
+
+    @JavascriptInterface
+    fun androidCallStatic(className: String, methodName: String, argsJson: String): String {
+        return PluginRuntime.androidCallStaticPayload(pluginId, className, methodName, argsJson)
+    }
+
+    @JavascriptInterface
+    fun androidGetStaticField(className: String, fieldName: String): String {
+        return PluginRuntime.androidGetStaticFieldPayload(pluginId, className, fieldName)
+    }
+
+    @JavascriptInterface
+    fun androidStartActivity(refId: String): String {
+        return PluginRuntime.androidStartActivityPayload(pluginId, refId)
+    }
+
+    @JavascriptInterface
+    fun androidGetLaunchIntentForPackage(packageName: String): String {
+        return PluginRuntime.androidGetLaunchIntentForPackagePayload(pluginId, packageName)
+    }
+
+    @JavascriptInterface
+    fun androidRelease(refId: String): String {
+        return PluginRuntime.androidReleasePayload(pluginId, refId)
     }
 
     @JavascriptInterface

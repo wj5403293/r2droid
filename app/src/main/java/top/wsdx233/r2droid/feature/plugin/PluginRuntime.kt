@@ -35,7 +35,8 @@ object PluginRuntime {
         SETTINGS_READ("settings.read"),
         SETTINGS_WRITE("settings.write"),
         SAF_PICKER("saf.picker"),
-        PROJECT_READ("project.read")
+        PROJECT_READ("project.read"),
+        ANDROID_CLASS("android.class")
     }
 
     private data class RunContext(
@@ -89,6 +90,7 @@ object PluginRuntime {
         processSessions.keys
             .filter { it.startsWith(prefix) }
             .forEach { key -> stopProcessByKey(key) }
+        PluginAndroidBridge.releaseAll(pluginId)
     }
 
     fun getPluginDir(pluginId: String): Result<String> = runCatching {
@@ -239,6 +241,58 @@ object PluginRuntime {
         val projects = runBlocking { repo.getAllProjects() }
         projectsToJson(projects)
     }
+
+    fun androidBridgeJavascript(hostObjectName: String): String {
+        return PluginAndroidBridge.javascriptBridge(hostObjectName)
+    }
+
+    fun androidImportClassPayload(pluginId: String, className: String): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.importClassPayload(className)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidNewPayload(pluginId: String, className: String, argsJson: String = "[]"): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.newPayload(pluginId, className, argsJson)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidCallPayload(pluginId: String, refId: String, methodName: String, argsJson: String = "[]"): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.callPayload(pluginId, refId, methodName, argsJson)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidCallStaticPayload(pluginId: String, className: String, methodName: String, argsJson: String = "[]"): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.callStaticPayload(pluginId, className, methodName, argsJson)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidGetStaticFieldPayload(pluginId: String, className: String, fieldName: String): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.getStaticFieldPayload(pluginId, className, fieldName)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidStartActivityPayload(pluginId: String, refId: String): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.startActivityPayload(getAppContext(), pluginId, refId)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidGetLaunchIntentForPackagePayload(pluginId: String, packageName: String): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.getLaunchIntentForPackagePayload(getAppContext(), pluginId, packageName)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
+
+    fun androidReleasePayload(pluginId: String, refId: String): String = runCatching {
+        val context = createContext(pluginId)
+        requirePermission(context, Permission.ANDROID_CLASS)
+        PluginAndroidBridge.releasePayload(pluginId, refId)
+    }.getOrElse(PluginAndroidBridge::errorPayload)
 
     private fun createContext(pluginId: String): RunContext {
         val installed = PluginManager.findInstalledPlugin(pluginId)
@@ -400,6 +454,48 @@ object PluginRuntime {
                     listProjectsInfo(context.pluginId).getOrElse { "Error: ${it.message}" }
                 }
 
+                function<String, String>("androidImportClass") { className ->
+                    androidImportClassPayload(context.pluginId, className)
+                }
+
+                function<String>("androidNew") { args ->
+                    val className = args.getOrNull(0)?.toString() ?: ""
+                    val argsJson = args.getOrNull(1)?.toString() ?: "[]"
+                    androidNewPayload(context.pluginId, className, argsJson)
+                }
+
+                function<String>("androidCall") { args ->
+                    val refId = args.getOrNull(0)?.toString() ?: ""
+                    val methodName = args.getOrNull(1)?.toString() ?: ""
+                    val argsJson = args.getOrNull(2)?.toString() ?: "[]"
+                    androidCallPayload(context.pluginId, refId, methodName, argsJson)
+                }
+
+                function<String>("androidCallStatic") { args ->
+                    val className = args.getOrNull(0)?.toString() ?: ""
+                    val methodName = args.getOrNull(1)?.toString() ?: ""
+                    val argsJson = args.getOrNull(2)?.toString() ?: "[]"
+                    androidCallStaticPayload(context.pluginId, className, methodName, argsJson)
+                }
+
+                function<String>("androidGetStaticField") { args ->
+                    val className = args.getOrNull(0)?.toString() ?: ""
+                    val fieldName = args.getOrNull(1)?.toString() ?: ""
+                    androidGetStaticFieldPayload(context.pluginId, className, fieldName)
+                }
+
+                function<String, String>("androidStartActivity") { refId ->
+                    androidStartActivityPayload(context.pluginId, refId)
+                }
+
+                function<String, String>("androidGetLaunchIntentForPackage") { packageName ->
+                    androidGetLaunchIntentForPackagePayload(context.pluginId, packageName)
+                }
+
+                function<String, String>("androidRelease") { refId ->
+                    androidReleasePayload(context.pluginId, refId)
+                }
+
                 function("emit") { args ->
                     val event = args.firstOrNull()?.toString() ?: "event"
                     val payload = args.drop(1).joinToString(" ")
@@ -407,6 +503,8 @@ object PluginRuntime {
                     Unit
                 }
             }
+
+            runBlocking { qjs.evaluate<Any?>(PluginAndroidBridge.javascriptBridge("host")) }
 
             val result = runBlocking { qjs.evaluate<Any?>(code) }?.toString().orEmpty()
             val logText = logs.joinToString("\n")

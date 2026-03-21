@@ -335,6 +335,10 @@ private fun PluginListTab(
                                 }
                             )
                         }
+                        PluginPermissionSummary(
+                            permissions = plugin.manifest?.permissions.orEmpty(),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     val isBundledAsset = plugin.state.sourceUrl.startsWith("asset://plugins/packages/", ignoreCase = true)
@@ -539,6 +543,43 @@ private fun PluginListTab(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun PluginPermissionSummary(
+    permissions: List<String>,
+    modifier: Modifier = Modifier
+) {
+    if (permissions.isEmpty()) return
+
+    val labels = permissions.distinct().map { permission ->
+        pluginPermissionLabel(permission)?.let { stringResource(it) } ?: permission
+    }
+
+    Text(
+        text = stringResource(R.string.plugin_permissions_prefix, labels.joinToString(", ")),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+    )
+}
+
+private fun pluginPermissionLabel(permission: String): Int? {
+    return when (permission) {
+        PluginRuntime.Permission.FILE_READ.key -> R.string.plugin_permission_file_read
+        PluginRuntime.Permission.FILE_WRITE.key -> R.string.plugin_permission_file_write
+        PluginRuntime.Permission.NETWORK.key -> R.string.plugin_permission_network
+        PluginRuntime.Permission.PROCESS.key -> R.string.plugin_permission_process
+        PluginRuntime.Permission.R2.key -> R.string.plugin_permission_r2
+        PluginRuntime.Permission.TERMINAL.key -> R.string.plugin_permission_terminal
+        PluginRuntime.Permission.FRIDA.key -> R.string.plugin_permission_frida
+        PluginRuntime.Permission.SETTINGS_READ.key -> R.string.plugin_permission_settings_read
+        PluginRuntime.Permission.SETTINGS_WRITE.key -> R.string.plugin_permission_settings_write
+        PluginRuntime.Permission.SAF_PICKER.key -> R.string.plugin_permission_saf_picker
+        PluginRuntime.Permission.PROJECT_READ.key -> R.string.plugin_permission_project_read
+        PluginRuntime.Permission.ANDROID_CLASS.key -> R.string.plugin_permission_android_class
+        else -> null
     }
 }
 
