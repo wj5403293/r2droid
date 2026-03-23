@@ -80,6 +80,11 @@
     <string name="settings_project_dir_desc">Location where projects are saved</string>
     <string name="settings_max_log_entries">Max Log Entries</string>
     <string name="settings_max_log_entries_desc">Maximum number of log entries to keep</string>
+    <string name="settings_clear_cache">Clear Cache</string>
+    <string name="settings_clear_cache_desc">Remove temporary files and radare2 cache data</string>
+    <string name="settings_cache_cleared">Cache cleared (%1$s)</string>
+    <string name="settings_cache_cleared_partial">Temporary cache cleared (%1$s). Shared cache was kept for running projects.</string>
+    <string name="settings_cache_clear_failed">Failed to clear cache</string>
     <string name="settings_ai_enabled">Enable AI Features</string>
     <string name="settings_ai_enabled_desc">Show AI assistant tab and AI explanation features</string>
     <string name="settings_ai_provider">AI Providers</string>
@@ -409,6 +414,12 @@
     
     <!-- Logs -->
     <string name="logs_clear_desc">Clear Logs</string>
+    <string name="logs_select_desc">Select Logs</string>
+    <string name="logs_select_title">Select Logs</string>
+    <string name="logs_selected_count">%1$d selected</string>
+    <string name="logs_range_select">Range Select</string>
+    <string name="logs_range_pick_end">Tap another log item to select a range</string>
+    <string name="logs_select_all_desc">Select All Logs</string>
 
     <!-- Dialogs -->
     <string name="dialog_jump_title">Jump to Address</string>

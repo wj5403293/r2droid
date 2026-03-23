@@ -50,9 +50,21 @@ object PermissionManager {
     // Create an intent to open the "All files access" settings page
     @RequiresApi(Build.VERSION_CODES.R)
     fun getManageExternalStorageIntent(context: Context): Intent {
-        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-        intent.data = "package:${context.packageName}".toUri()
-        return intent
+        val packageUri = "package:${context.packageName}".toUri()
+        val candidates = listOf(
+            Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                data = packageUri
+            },
+            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).apply {
+                data = packageUri
+            },
+            Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = packageUri
+            }
+        )
+        return candidates.firstOrNull { it.resolveActivity(context.packageManager) != null }
+            ?: candidates.last()
     }
 
     // Open settings for manual permission granting (fallback)

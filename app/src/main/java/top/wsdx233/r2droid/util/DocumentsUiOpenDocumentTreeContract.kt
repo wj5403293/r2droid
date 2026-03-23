@@ -8,14 +8,19 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 class DocumentsUiOpenDocumentTreeContract : ActivityResultContract<Uri?, Uri?>() {
     private val delegate = ActivityResultContracts.OpenDocumentTree()
+    private val preferredPackages = listOf(
+        "com.google.android.documentsui",
+        "com.android.documentsui"
+    )
 
     override fun createIntent(context: Context, input: Uri?): Intent {
-        val intent = delegate.createIntent(context, input).apply {
-            setPackage("com.android.documentsui")
+        val intent = delegate.createIntent(context, input)
+        val packageManager = context.packageManager
+        val matchingPackage = preferredPackages.firstOrNull { packageName ->
+            intent.setPackage(packageName)
+            intent.resolveActivity(packageManager) != null
         }
-        if (intent.resolveActivity(context.packageManager) == null) {
-            intent.setPackage(null)
-        }
+        intent.setPackage(matchingPackage)
         return intent
     }
 

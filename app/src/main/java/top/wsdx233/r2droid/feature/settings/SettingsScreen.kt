@@ -10,6 +10,7 @@ import android.os.PowerManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,14 +23,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FontDownload
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FontDownload
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
@@ -49,7 +51,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import top.wsdx233.r2droid.R
@@ -63,6 +67,7 @@ import kotlinx.coroutines.MainScope
 import org.json.JSONArray
 import org.json.JSONObject
 import top.wsdx233.r2droid.service.KeepAliveService
+import top.wsdx233.r2droid.util.AppCacheCleaner
 import top.wsdx233.r2droid.util.DocumentsUiOpenDocumentTreeContract
 import top.wsdx233.r2droid.util.UpdateManager
 import java.io.File
@@ -431,6 +436,7 @@ fun SettingsScreen(
     val defaultJumpTarget by viewModel.defaultJumpTarget.collectAsState()
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(Unit) {
         viewModel.loadR2rcContent(context)
@@ -552,6 +558,41 @@ fun SettingsScreen(
                     onClick = {
                         tempMaxLog = maxLogEntries.toString()
                         showMaxLogDialog = true
+                    }
+                )
+            }
+
+            item {
+                SettingsItem(
+                    title = stringResource(R.string.settings_clear_cache),
+                    subtitle = stringResource(R.string.settings_clear_cache_desc),
+                    icon = Icons.Default.Delete,
+                    onClick = {
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    AppCacheCleaner.clearAppCache(context)
+                                }
+                            }.onSuccess { result ->
+                                val formattedSize = Formatter.formatShortFileSize(context, result.freedBytes)
+                                val messageRes = if (result.sharedCacheCleared) {
+                                    R.string.settings_cache_cleared
+                                } else {
+                                    R.string.settings_cache_cleared_partial
+                                }
+                                Toast.makeText(
+                                    context,
+                                    context.getString(messageRes, formattedSize),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }.onFailure {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.settings_cache_clear_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
                 )
             }

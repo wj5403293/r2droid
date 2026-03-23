@@ -70,6 +70,11 @@
     <string name="settings_project_dir_desc">Место сохранения проектов</string>
     <string name="settings_max_log_entries">Макс. записей в журнале</string>
     <string name="settings_max_log_entries_desc">Максимальное количество сохраняемых логов</string>
+    <string name="settings_clear_cache">Очистить кэш</string>
+    <string name="settings_clear_cache_desc">Удалить временные файлы и данные кэша radare2</string>
+    <string name="settings_cache_cleared">Кэш очищен (%1$s)</string>
+    <string name="settings_cache_cleared_partial">Временный кэш очищен (%1$s), общий кэш сохранён для запущенных проектов.</string>
+    <string name="settings_cache_clear_failed">Не удалось очистить кэш</string>
     <string name="settings_ai_enabled">Включить функции ИИ</string>
     <string name="settings_ai_enabled_desc">Показывать вкладку ИИ-ассистента и функции объяснения кода</string>
     <string name="settings_ai_provider">Провайдеры ИИ</string>
@@ -386,6 +391,12 @@
     
     <!-- Logs -->
     <string name="logs_clear_desc">Очистить логи</string>
+    <string name="logs_select_desc">Выбрать логи</string>
+    <string name="logs_select_title">Выбрать логи</string>
+    <string name="logs_selected_count">Выбрано: %1$d</string>
+    <string name="logs_range_select">Выбор диапазона</string>
+    <string name="logs_range_pick_end">Нажмите другой элемент лога, чтобы выбрать диапазон</string>
+    <string name="logs_select_all_desc">Выбрать все логи</string>
 
     <!-- Dialogs -->
     <string name="dialog_jump_title">Перейти по адресу</string>

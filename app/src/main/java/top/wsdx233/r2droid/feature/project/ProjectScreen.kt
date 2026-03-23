@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
@@ -65,8 +66,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.wsdx233.r2droid.R
+import top.wsdx233.r2droid.util.AppCacheCleaner
 import top.wsdx233.r2droid.util.R2PipeManager
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -85,12 +89,20 @@ fun ProjectScreen(
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
+    val context = LocalContext.current
     val sessions by R2PipeManager.sessions.collectAsState()
     val activeSessionId by R2PipeManager.activeSessionId.collectAsState()
     var pendingStartTriggered by remember { mutableStateOf(false) }
 
     var selectedUtility by remember { mutableStateOf<UtilityTool?>(null) }
     var toolResultDialog by remember { mutableStateOf<String?>(null) }
+
+    suspend fun closeSessionAndCleanup(sessionId: String?) {
+        sessionId?.let { R2PipeManager.closeSession(it) }
+        withContext(Dispatchers.IO) {
+            AppCacheCleaner.clearAfterProjectExit(context)
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -137,7 +149,7 @@ fun ProjectScreen(
                                 onClose = {
                                     drawerScope.launch {
                                         val isLastSession = sessions.size <= 1
-                                        R2PipeManager.closeSession(session.sessionId)
+                                        closeSessionAndCleanup(session.sessionId)
                                         if (isLastSession) {
                                             onNavigateBack()
                                         }
@@ -238,6 +250,7 @@ fun ProjectScreen(
         if (pendingExitOnSave && saveState is SaveProjectState.Success) {
             pendingExitOnSave = false
             showSaveBeforeExitDialog = false
+            closeSessionAndCleanup(activeSessionId)
             onNavigateBack()
         }
     }
@@ -298,7 +311,7 @@ fun ProjectScreen(
                         onClick = {
                             showExitDialog = false
                             drawerScope.launch {
-                                activeSessionId?.let { R2PipeManager.closeSession(it) }
+                                closeSessionAndCleanup(activeSessionId)
                                 onNavigateBack()
                             }
                         }
