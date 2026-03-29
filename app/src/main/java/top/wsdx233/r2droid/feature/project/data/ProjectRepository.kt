@@ -45,9 +45,9 @@ class ProjectRepository @Inject constructor(
 
     suspend fun getOverview(): Result<BinInfo> {
         return runCatching {
-            val iIjOutput = R2PipeManager.executeJson("iIj").getOrThrow()
-            if (iIjOutput.isBlank()) throw RuntimeException("Empty response from r2")
-            val baseInfo = BinInfo.fromJson(JSONObject(iIjOutput))
+            val ijOutput = R2PipeManager.executeJson("ij").getOrThrow()
+            if (ijOutput.isBlank()) throw RuntimeException("Empty response from r2")
+            val baseInfo = BinInfo.fromJson(JSONObject(ijOutput))
             
             val entropyOut = R2PipeManager.executeJson("p=ej 64").getOrDefault("{}")
             val entropyData = EntropyData.fromJson(JSONObject(entropyOut))

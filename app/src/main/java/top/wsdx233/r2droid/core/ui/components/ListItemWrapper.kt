@@ -4,10 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
@@ -129,6 +132,8 @@ fun UnifiedListItemWrapper(
     actions: ListItemActions,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
     elevation: androidx.compose.ui.unit.Dp = 0.dp,
+    showVisitedHighlight: Boolean = true,
+    visitedIndicatorCount: Int = 1,
     content: @Composable () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -144,7 +149,7 @@ fun UnifiedListItemWrapper(
             .shadow(elevation, shape)
             .clip(shape)
             .background(
-                if (visited) {
+                if (visited && showVisitedHighlight) {
                     MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.22f)
                 } else {
                     Color.Transparent
@@ -175,7 +180,7 @@ fun UnifiedListItemWrapper(
                 onLongClick = { expanded = true }
             )
             .then(
-                if (visited) {
+                if (visited && showVisitedHighlight) {
                     Modifier.shadow(2.dp, shape)
                 } else {
                     Modifier
@@ -185,13 +190,20 @@ fun UnifiedListItemWrapper(
         content()
 
         if (visited) {
-            Box(
+            Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(6.dp)
-                    .size(8.dp)
-                    .background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(99.dp))
-            )
+                    .padding(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                repeat(visitedIndicatorCount.coerceAtLeast(1)) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(MaterialTheme.colorScheme.tertiary, CircleShape)
+                    )
+                }
+            }
         }
 
         DropdownMenu(

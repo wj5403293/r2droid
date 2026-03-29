@@ -27,7 +27,7 @@ class BinInfoRepository @Inject constructor(
 ) {
 
     suspend fun getOverview(): Result<BinInfo> {
-        return r2DataSource.executeJson("iIj").mapCatching { output ->
+        return r2DataSource.executeJson("ij").mapCatching { output ->
             if (output.isBlank()) throw RuntimeException("Empty response from r2")
             val json = JSONObject(output)
             BinInfo.fromJson(json)

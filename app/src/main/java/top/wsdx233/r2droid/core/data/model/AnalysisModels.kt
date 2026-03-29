@@ -1,19 +1,41 @@
 package top.wsdx233.r2droid.core.data.model
 
 import android.util.Base64
+import org.json.JSONArray
 import org.json.JSONObject
 import top.wsdx233.r2droid.core.data.parser.CLexer
+
+data class InfoField(
+    val label: String,
+    val value: String,
+    val address: Long? = null,
+    val booleanValue: Boolean? = null
+)
+
+data class InfoSection(
+    val title: String,
+    val fields: List<InfoField>
+)
 
 data class BinInfo(
     val arch: String,
     val bits: Int,
     val os: String,
     val type: String,
+    val binaryClass: String = "",
     val compiled: String,
+    val compiler: String = "",
     val language: String,
     val machine: String,
     val subSystem: String,
+    val file: String = "",
+    val humanSize: String = "",
+    val mode: String = "",
+    val format: String = "",
+    val binType: String = "",
+    val endian: String = "",
     val size: Long = 0L,
+    val ijSections: List<InfoSection> = emptyList(),
     val entropy: EntropyData? = null,
     val blockStats: BlockStatsData? = null,
     val hashes: HashInfo? = null,
@@ -26,18 +48,105 @@ data class BinInfo(
 ) {
 
     companion object {
-        fun fromJson(json: JSONObject): BinInfo {
-            return BinInfo(
-                arch = json.optString("arch", "Unknown"),
-                bits = json.optInt("bits", 0),
-                os = json.optString("os", "Unknown"),
-                type = json.optString("class", "Unknown"), // "class": "PE32"
-                compiled = json.optString("compiled", ""),
-                language = json.optString("lang", "Unknown"),
-                machine = json.optString("machine", "Unknown"),
-                subSystem = json.optString("subsys", "Unknown"),
-                size = json.optLong("size", 0) // Typically in iIj details or core
+        private val preferredSectionKeys = mapOf(
+            "core" to listOf("type", "file", "fd", "size", "humansz", "iorw", "mode", "block", "format"),
+            "bin" to listOf(
+                "arch", "baddr", "binsz", "bintype", "bits", "canary", "injprot", "class",
+                "compiled", "compiler", "crypto", "dbg_file", "endian", "havecode", "guid",
+                "intrp", "laddr", "lang", "linenum", "lsyms", "machine", "nx", "os", "cc",
+                "pic", "relocs", "relro", "rpath", "sanitize", "static", "stripped", "subsys",
+                "va", "checksums"
             )
+        )
+
+        fun fromJson(json: JSONObject): BinInfo {
+            val core = json.optJSONObject("core")
+            val bin = json.optJSONObject("bin")
+            val coreJson = core ?: json
+            val binJson = bin ?: json
+
+            return BinInfo(
+                arch = binJson.optString("arch", "Unknown"),
+                bits = binJson.optInt("bits", 0),
+                os = binJson.optString("os", "Unknown"),
+                type = coreJson.optString("type").ifBlank { binJson.optString("type").ifBlank { binJson.optString("class", "Unknown") } },
+                binaryClass = binJson.optString("class", ""),
+                compiled = binJson.optString("compiled", ""),
+                compiler = binJson.optString("compiler", ""),
+                language = binJson.optString("lang", "Unknown"),
+                machine = binJson.optString("machine", "Unknown"),
+                subSystem = binJson.optString("subsys", "Unknown"),
+                file = coreJson.optString("file", ""),
+                humanSize = coreJson.optString("humansz", ""),
+                mode = coreJson.optString("mode", ""),
+                format = coreJson.optString("format", ""),
+                binType = binJson.optString("bintype", ""),
+                endian = binJson.optString("endian", ""),
+                size = coreJson.optLong("size", binJson.optLong("size", 0L)),
+                ijSections = buildIjSections(json)
+            )
+        }
+
+        private fun buildIjSections(json: JSONObject): List<InfoSection> {
+            val sections = mutableListOf<InfoSection>()
+            json.optJSONObject("core")?.let { core ->
+                val fields = flattenFields(core, sectionName = "core", preferredKeys = preferredSectionKeys["core"].orEmpty())
+                if (fields.isNotEmpty()) sections += InfoSection(title = "core", fields = fields)
+            }
+            json.optJSONObject("bin")?.let { bin ->
+                val fields = flattenFields(bin, sectionName = "bin", preferredKeys = preferredSectionKeys["bin"].orEmpty())
+                if (fields.isNotEmpty()) sections += InfoSection(title = "bin", fields = fields)
+            }
+            return sections
+        }
+
+        private fun flattenFields(
+            json: JSONObject,
+            sectionName: String,
+            preferredKeys: List<String>
+        ): List<InfoField> {
+            val keys = linkedSetOf<String>()
+            preferredKeys.filterTo(keys) { json.has(it) }
+            json.keys().forEachRemaining { keys += it }
+            return keys.flatMap { key -> flattenValue(sectionName, key, json.opt(key)) }
+        }
+
+        private fun flattenValue(sectionName: String, key: String, value: Any?): List<InfoField> {
+            if (value == null || value == JSONObject.NULL) return emptyList()
+            return when (value) {
+                is JSONObject -> {
+                    if (value.length() == 0) emptyList()
+                    else {
+                        val nestedKeys = mutableListOf<String>()
+                        value.keys().forEachRemaining { nestedKeys += it }
+                        nestedKeys.sorted().flatMap { nestedKey ->
+                            flattenValue(sectionName, "$key.$nestedKey", value.opt(nestedKey))
+                        }
+                    }
+                }
+                is JSONArray -> {
+                    if (value.length() == 0) emptyList()
+                    else listOf(InfoField(label = key, value = value.toString()))
+                }
+                is String -> value.takeIf { it.isNotBlank() }?.let { listOf(InfoField(label = key, value = it)) }.orEmpty()
+                is Boolean -> listOf(InfoField(label = key, value = value.toString(), booleanValue = value))
+                is Number -> {
+                    val address = if (isAddressLike(sectionName, key)) value.toLong() else null
+                    val formattedValue = address?.let { "0x${it.toString(16)}" } ?: value.toString()
+                    listOf(InfoField(label = key, value = formattedValue, address = address))
+                }
+                else -> listOf(InfoField(label = key, value = value.toString()))
+            }
+        }
+
+        private fun isAddressLike(sectionName: String, key: String): Boolean {
+            val leafKey = key.substringAfterLast('.')
+            return when {
+                leafKey == "baddr" || leafKey == "laddr" -> true
+                leafKey.endsWith("addr") || leafKey.endsWith("_addr") -> true
+                sectionName == "bin" && (leafKey == "vaddr" || leafKey == "paddr") -> true
+                else -> false
+            }
         }
     }
 }

@@ -63,6 +63,7 @@ import top.wsdx233.r2droid.core.data.model.EntropyData
 import top.wsdx233.r2droid.core.data.model.EntryPoint
 import top.wsdx233.r2droid.core.data.model.HashInfo
 import top.wsdx233.r2droid.core.data.model.HeaderInfo
+import top.wsdx233.r2droid.core.data.model.InfoSection
 import top.wsdx233.r2droid.core.ui.components.ListItemActions
 import top.wsdx233.r2droid.core.ui.components.UnifiedListItemWrapper
 import top.wsdx233.r2droid.ui.theme.LocalAppFont
@@ -77,7 +78,8 @@ fun OverviewCard(info: BinInfo, actions: ListItemActions) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         BasicInfoCard(info, actions)
-        
+        IjSectionCards(info, actions)
+
         info.hashes?.let { if (it.md5.isNotBlank()) HashesCard(it, actions) }
         
         if (info.archs.isNotEmpty()) {
@@ -110,7 +112,8 @@ fun OverviewCard(info: BinInfo, actions: ListItemActions, scrollState: ScrollSta
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         BasicInfoCard(info, actions)
-        
+        IjSectionCards(info, actions)
+
         info.hashes?.let { if (it.md5.isNotBlank()) HashesCard(it, actions) }
         
         if (info.archs.isNotEmpty()) {
@@ -216,14 +219,148 @@ fun BasicInfoCard(info: BinInfo, actions: ListItemActions) {
         InfoRow(stringResource(R.string.binary_bits), "${info.bits}", actions = actions)
         InfoRow(stringResource(R.string.binary_os), info.os, actions = actions)
         InfoRow(stringResource(R.string.binary_type), info.type, actions = actions)
+        if (info.binaryClass.isNotBlank()) InfoRow(ijFieldLabel("class"), info.binaryClass, actions = actions)
+        if (info.binType.isNotBlank()) InfoRow(ijFieldLabel("bintype"), info.binType, actions = actions)
+        if (info.format.isNotBlank()) InfoRow(ijFieldLabel("format"), info.format, actions = actions)
+        if (info.endian.isNotBlank()) InfoRow(ijFieldLabel("endian"), info.endian, actions = actions)
+        if (info.mode.isNotBlank()) InfoRow(ijFieldLabel("mode"), info.mode, actions = actions)
         InfoRow(stringResource(R.string.binary_machine), info.machine, actions = actions)
         InfoRow(stringResource(R.string.binary_language), info.language, actions = actions)
+        if (info.compiler.isNotBlank()) InfoRow(ijFieldLabel("compiler"), info.compiler, actions = actions)
         if (info.compiled.isNotBlank()) InfoRow(stringResource(R.string.binary_compiled), info.compiled, actions = actions)
         if (info.subSystem.isNotBlank()) InfoRow(stringResource(R.string.binary_subsystem), info.subSystem, actions = actions)
-        if (info.size > 0) InfoRow(stringResource(R.string.binary_size), stringResource(R.string.binary_size_bytes, info.size), actions = actions)
-        
+        if (info.file.isNotBlank()) InfoRow(ijFieldLabel("file"), info.file, actions = actions)
+        if (info.size > 0) {
+            val sizeLabel = if (info.humanSize.isNotBlank()) {
+                "${info.humanSize} (${stringResource(R.string.binary_size_bytes, info.size)})"
+            } else {
+                stringResource(R.string.binary_size_bytes, info.size)
+            }
+            InfoRow(stringResource(R.string.binary_size), sizeLabel, actions = actions)
+        }
+
         info.guessedSize?.let { if (it > 0) InfoRow(stringResource(R.string.binary_guessed_size), stringResource(R.string.binary_size_bytes, it), actions = actions) }
         info.mainAddr?.let { if (it.vaddr > 0) InfoRow(stringResource(R.string.binary_main_address), "0x${it.vaddr.toString(16)}", address = it.vaddr, actions = actions) }
+    }
+}
+
+@Composable
+fun IjSectionCards(info: BinInfo, actions: ListItemActions) {
+    info.ijSections.forEach { section ->
+        val filteredFields = section.fields.filterNot { shouldHideIjFieldInExtraSection(section.title, it.label) }
+        if (filteredFields.isNotEmpty()) {
+            IjSectionCard(section = section.copy(fields = filteredFields), actions = actions)
+        }
+    }
+}
+
+@Composable
+fun IjSectionCard(section: InfoSection, actions: ListItemActions) {
+    OverviewSectionCard(
+        title = when (section.title) {
+            "core" -> stringResource(R.string.binary_ij_core)
+            "bin" -> stringResource(R.string.binary_ij_bin)
+            else -> section.title
+        },
+        icon = if (section.title == "bin") Icons.Default.Memory else Icons.Default.Info
+    ) {
+        ExpandableContentList(itemCount = section.fields.size, initialVisibleCount = 10) { index ->
+            val field = section.fields[index]
+            InfoRow(ijFieldLabel(field.label), field.value, address = field.address, booleanValue = field.booleanValue, actions = actions)
+        }
+    }
+}
+
+private fun shouldHideIjFieldInExtraSection(sectionTitle: String, label: String): Boolean {
+    val basicCoreFields = setOf("type", "file", "size", "humansz", "mode", "format")
+    val basicBinFields = setOf("arch", "bits", "bintype", "class", "compiled", "compiler", "endian", "lang", "machine", "os", "subsys")
+    return when (sectionTitle) {
+        "core" -> label in basicCoreFields
+        "bin" -> label in basicBinFields
+        else -> false
+    }
+}
+
+@Composable
+private fun ijFieldLabel(label: String): String {
+    if (label.startsWith("checksums.")) {
+        val checksumName = label.substringAfter('.').uppercase()
+        return "${stringResource(R.string.binary_checksums)} / $checksumName"
+    }
+    return when (label) {
+        "type" -> stringResource(R.string.binary_type)
+        "file" -> stringResource(R.string.binary_file)
+        "fd" -> stringResource(R.string.binary_file_descriptor)
+        "size" -> stringResource(R.string.binary_size)
+        "humansz" -> stringResource(R.string.binary_human_size)
+        "iorw" -> stringResource(R.string.binary_io_writable)
+        "mode" -> stringResource(R.string.binary_mode)
+        "block" -> stringResource(R.string.binary_block_size)
+        "format" -> stringResource(R.string.binary_format)
+        "arch" -> stringResource(R.string.binary_arch)
+        "baddr" -> stringResource(R.string.binary_base_address)
+        "binsz" -> stringResource(R.string.binary_binary_size)
+        "bintype" -> stringResource(R.string.binary_bin_type)
+        "bits" -> stringResource(R.string.binary_bits)
+        "canary" -> stringResource(R.string.binary_canary)
+        "injprot" -> stringResource(R.string.binary_injection_protection)
+        "class" -> stringResource(R.string.binary_class_label)
+        "compiled" -> stringResource(R.string.binary_compiled)
+        "compiler" -> stringResource(R.string.binary_compiler)
+        "crypto" -> stringResource(R.string.binary_crypto)
+        "dbg_file" -> stringResource(R.string.binary_debug_file)
+        "endian" -> stringResource(R.string.binary_endian)
+        "havecode" -> stringResource(R.string.binary_has_code)
+        "guid" -> stringResource(R.string.binary_guid)
+        "intrp" -> stringResource(R.string.binary_interpreter)
+        "laddr" -> stringResource(R.string.binary_load_address)
+        "lang" -> stringResource(R.string.binary_language)
+        "linenum" -> stringResource(R.string.binary_line_numbers)
+        "lsyms" -> stringResource(R.string.binary_local_symbols)
+        "machine" -> stringResource(R.string.binary_machine)
+        "nx" -> stringResource(R.string.binary_nx)
+        "os" -> stringResource(R.string.binary_os)
+        "cc" -> stringResource(R.string.binary_calling_convention)
+        "pic" -> stringResource(R.string.binary_pic)
+        "relocs" -> stringResource(R.string.binary_relocations)
+        "relro" -> stringResource(R.string.binary_relro)
+        "rpath" -> stringResource(R.string.binary_rpath)
+        "sanitize" -> stringResource(R.string.binary_sanitize)
+        "static" -> stringResource(R.string.binary_static_label)
+        "stripped" -> stringResource(R.string.binary_stripped)
+        "subsys" -> stringResource(R.string.binary_subsystem)
+        "va" -> stringResource(R.string.binary_virtual_addressing)
+        else -> label.split('.').joinToString(" / ") { part ->
+            part.replace('_', ' ').replaceFirstChar { ch ->
+                if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+            }
+        }
+    }
+}
+
+@Composable
+private fun BooleanBadge(value: Boolean) {
+    val background = if (value) {
+        MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f)
+    } else {
+        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+    }
+    val contentColor = if (value) {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    } else {
+        MaterialTheme.colorScheme.onErrorContainer
+    }
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = background
+    ) {
+        Text(
+            text = stringResource(if (value) R.string.common_yes else R.string.common_no),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = contentColor,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
     }
 }
 
@@ -400,13 +537,21 @@ fun LegendItem(label: String, color: Color) {
 }
 
 @Composable
-fun InfoRow(label: String, value: String, address: Long? = null, actions: ListItemActions) {
+fun InfoRow(
+    label: String,
+    value: String,
+    address: Long? = null,
+    booleanValue: Boolean? = null,
+    actions: ListItemActions
+) {
     UnifiedListItemWrapper(
         title = label,
         address = address,
         fullText = value,
         actions = actions,
-        shape = RoundedCornerShape(8.dp)
+        shape = RoundedCornerShape(8.dp),
+        showVisitedHighlight = false,
+        visitedIndicatorCount = 3
     ) {
         Row(
             modifier = Modifier
@@ -422,31 +567,42 @@ fun InfoRow(label: String, value: String, address: Long? = null, actions: ListIt
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            val isAddress = address != null
-            if (isAddress) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    onClick = { actions.onJumpToDisasm(address!!) }
-                ) {
+            val targetAddress = address
+            when {
+                targetAddress != null -> {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                        onClick = { actions.onJumpToDisasm(targetAddress) }
+                    ) {
+                        Text(
+                            text = value,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontFamily = LocalAppFont.current,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                }
+                booleanValue != null -> {
+                    Box(
+                        modifier = Modifier.weight(2f),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        BooleanBadge(booleanValue)
+                    }
+                }
+                else -> {
                     Text(
                         text = value,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontFamily = LocalAppFont.current,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        modifier = Modifier.weight(2f),
                         textAlign = TextAlign.End
                     )
                 }
-            } else {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontFamily = LocalAppFont.current,
-                    modifier = Modifier.weight(2f),
-                    textAlign = TextAlign.End
-                )
             }
         }
     }
